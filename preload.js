@@ -1,12 +1,22 @@
-// All of the Node.js APIs are available in the preload process.
-// It has the same sandbox as a Chrome extension.
-window.addEventListener("DOMContentLoaded", () => {
-  /*const replaceText = (selector, text) => {
-    const element = document.getElementById(selector)
-    if (element) element.innerText = text
-  }
+/*
+const {ipcRenderer} = require('electron');
 
-  for (const type of ['chrome', 'node', 'electron']) {
-    replaceText(`${type}-version`, process.versions[type])
-  }*/
+process.once('loaded', () => {
+  window.addEventListener('main-to-download', (event) => {
+    
+    console.log(event);
+
+    switch(event.message) {
+      case 'newFile':
+        ipcRenderer.send('newFile', event.data);
+        break;
+      case 'downloadingFile':
+        ipcRenderer.send('downloadingFile', event.data);
+        break;
+      case 'fileDownloaded':
+        ipcRenderer.send('fileDownloaded', event.data);
+        break;
+    }
+  });
 });
+*/

@@ -1,9 +1,8 @@
 jQuery(document).ready(($) => {
   const { ipcRenderer } = require("electron");  
   
-  let numberDownloads;
   let files = [];
-  const REMOVE_TIMER = 10000;
+  const REMOVE_TIMER = 5000;
   
   ipcRenderer.on('newFile', (event, args) => {
     addFile(args.id, args.fileName, args.extension, args.fullPath, args.bytes);
@@ -93,8 +92,6 @@ jQuery(document).ready(($) => {
     el.addClass("completed");
     file.completed = true;
   
-    resizeWindow();
-  
     setTimeout(() => removeFile(id), REMOVE_TIMER);
   };
   
@@ -102,13 +99,14 @@ jQuery(document).ready(($) => {
     files = files.filter((item) => {
       return item.id !== id;
     });
-    $("#" + id).remove();
-  
-    if (files.length === 0) {
-      ipcRenderer.send('closeDownloadWindow');
+    
+    if (files.length > 0) {
+      $("#" + id).remove();
     } else {
-      resizeWindow();
+      ipcRenderer.send('closeDownloadWindow', files.length);
     }
+  
+    resizeWindow();
   };
   
   const openFolder = (id) => {
@@ -128,8 +126,8 @@ jQuery(document).ready(($) => {
   
   const resizeWindow = () => {
     const el = $("body");
-    ipcRenderer.send('resizeWindow', { width: el.width(), height: el.height() + 1, });
-  };
+    $('html').height(el.height());
 
-  
+    ipcRenderer.send('resizeWindow', { width: el.width(), height: el.height() + 1, });
+  };  
 });

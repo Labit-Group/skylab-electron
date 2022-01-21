@@ -13,10 +13,10 @@ html,
 body {
   margin: 0px;
   padding: 0px;
+  background-color: transparent;
 }
 
 body {
-  background-color: transparent;
   font-family: Karla;
   color: var(--labit-card-gray);
   font-size: 15px;
@@ -30,9 +30,7 @@ div.container {
   display: flex;
   flex-direction: column;
   padding: 15px;
-  border-radius: 10px;
-  background-color: var(--labit-background-gray);
-  border: 1px solid var(--labit-card-gray);
+  background-color: #fff;
 }
 
 div.itemRow {
@@ -41,7 +39,7 @@ div.itemRow {
 }
 
 div.itemRow:not(:last-child) {
-  margin-bottom: 15px;
+  margin: 8px 0;
 }
 
 div.bar {
