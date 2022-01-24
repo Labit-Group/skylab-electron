@@ -91,7 +91,8 @@ jQuery(document).ready(($) => {
   
     el.addClass("completed");
     file.completed = true;
-  
+    
+    resizeWindow();
     setTimeout(() => removeFile(id), REMOVE_TIMER);
   };
   

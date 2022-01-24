@@ -106,9 +106,10 @@ const createMenu = () => {
 };
 
 const resizeDownloadWindow = () => {
-  downloadWindow.setSize(downloadWindowProperties.width, downloadWindowProperties.height);
-  downloadWindow.setMaximumSize(downloadWindowProperties.width, downloadWindowProperties.height);
-  downloadWindow.setPosition(downloadWindowProperties.x, downloadWindowProperties.y);
+  console.log(downloadWindowProperties);
+  downloadWindow.setSize(downloadWindowProperties.width, downloadWindowProperties.height + 20);
+  downloadWindow.setMaximumSize(downloadWindowProperties.width, downloadWindowProperties.height + 20);
+  downloadWindow.setPosition(downloadWindowProperties.x - 4, downloadWindowProperties.y - 4);
 };
 
 const createDownloadWindow = async () => {
@@ -134,7 +135,7 @@ const createDownloadWindow = async () => {
 
   resizeDownloadWindow();
   downloadWindow.loadFile(path.join(__dirname, 'downloadProgress', 'downloadProgress.html'));
-  //downloadWindow.webContents.openDevTools();
+  downloadWindow.webContents.openDevTools();
 
   return new Promise((resolve) => { downloadWindow.webContents.on('did-finish-load', () => { setTimeout(() => resolve(), 500 ) }); });
 };
