@@ -5,7 +5,7 @@ jQuery(document).ready(($) => {
   const REMOVE_TIMER = 5000;
   
   ipcRenderer.on('newFile', (event, args) => {
-    addFile(args.id, args.fileName, args.extension, args.fullPath, args.bytes);
+    addFile(args.id, args.fileName, args.extension, args.fullPath, args.bytes, args.downloadedFrom);
   });
 
   ipcRenderer.on('downloadingFile', (event, args) => {
@@ -15,6 +15,10 @@ jQuery(document).ready(($) => {
   ipcRenderer.on('fileDownloaded', (event, args) => {
     fileDownloaded(args.id);
   });
+
+  ipcRenderer.on('downloadCancelled', (event, args) => {
+    downloadCancelled(args.id);
+  });
   
   const getTemplate = (selector) => {
     const el = $(selector);
@@ -22,13 +26,13 @@ jQuery(document).ready(($) => {
     return contents;
   };
   
-  const addFile = (id, fileName, extension, fullPath, bytes) => { 
+  const addFile = (id, fileName, extension, fullPath, bytes, downloadedFrom) => { 
     const contents = getTemplate("#itemRowNotFinished");
     contents.attr("id", id);
     contents.find("span.fileName").text(fileName);
     contents.find("div.icon").click(() => {
-      removeFile(id);
       cancelDownload(id);
+      removeFile(id);
     });
     $("#container").append(contents);
     files.push({
@@ -36,6 +40,7 @@ jQuery(document).ready(($) => {
       fileName,
       extension,
       bytes,
+      downloadedFrom,
       fullPath,
       completed: false,
     });
@@ -46,6 +51,27 @@ jQuery(document).ready(($) => {
   const downloadingFile = (id, perc) => {
     const el = $("#" + id);
     el.find("#percBar").css("width", perc + "%");
+  };
+  
+  const downloadCancelled = (id) => {
+    const el = $("#" + id);
+    el.find("#percBar").css("background-color", "#ff9942");
+    
+    //el.find('.icon img').attr('src', 'img/retry.svg'); //retry.svg
+
+    el.find('.icons').prepend( 
+      `
+        <div id="retry" class="icon fadedButton">
+          <img src="img/retry.svg">
+        </div>
+      `
+    );
+    el.find('#retry').on('click', (ev) => {
+      ev.preventDefault();
+      retryDownload(id);
+      el.find("#percBar").css("background-color", "#35425b");
+      el.find('#retry').remove();
+    });
   };
   
   const fileDownloaded = (id) => {
@@ -117,12 +143,21 @@ jQuery(document).ready(($) => {
     ipcRenderer.send('openFolder', { fullPath: file.fullPath });
   };
   
-  const cancelDownload = (id) => {
+  const retryDownload = (id) => {
     const file = files.find((item) => {
       return item.id === id;
     });
   
-    ipcRenderer.send('cancelDownload', { id: file.id });
+    ipcRenderer.send('retryDownload', { id: file.id, url: file.downloadedFrom });
+  };
+  
+  const cancelDownload = (id) => {
+    console.log( {files: files, id: id} );
+    const file = files.find((item) => {
+      return item.id === id;
+    });
+  
+    ipcRenderer.send('cancelDownload', { id: file.id, url: file.downloadedFrom });
   };
   
   const resizeWindow = () => {

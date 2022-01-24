@@ -53,6 +53,8 @@ let downloadWindowProperties = {
 
 let mainWindow, downloadWindow;
 let zoomLevel = 0, closeWindowTimeout = 0;
+let currentDownloadAction = '';
+let currentDownloadID = '';
 
 const createWindow = () => {
   mainWindow = new BrowserWindow({
@@ -106,7 +108,6 @@ const createMenu = () => {
 };
 
 const resizeDownloadWindow = () => {
-  console.log(downloadWindowProperties);
   downloadWindow.setSize(downloadWindowProperties.width, downloadWindowProperties.height + 20);
   downloadWindow.setMaximumSize(downloadWindowProperties.width, downloadWindowProperties.height + 20);
   downloadWindow.setPosition(downloadWindowProperties.x - 4, downloadWindowProperties.y - 4);
@@ -122,7 +123,7 @@ const createDownloadWindow = async () => {
     useContentSize: false,
     movable: false,
     closable: false,
-    alwaysOnTop: true,
+    alwaysOnTop: false,
     resizable: false,
     type: 'toolbar',
     transparent: true,
@@ -142,7 +143,11 @@ const createDownloadWindow = async () => {
 
 ipcMain.on('closeDownloadWindow', (event, args) => {
   resizeDownloadWindow();
-  if (args === 0) closeWindowTimeout = setTimeout(() => { downloadWindow.destroy(); downloadWindow = null; }, 5000);
+  if (args === 0) closeWindowTimeout = setTimeout(() => { 
+    if (downloadWindow !== null) { 
+      downloadWindow.destroy(); downloadWindow = null; 
+    } 
+  }, 5000);
 });
 
 ipcMain.on('openFile', (event, arg) => {
@@ -152,6 +157,22 @@ ipcMain.on('openFile', (event, arg) => {
     open(arg.fullPath);
   }
 });
+
+ipcMain.on('retryDownload', (event, arg) => {
+  currentDownloadAction = 'retry';
+  currentDownloadID = arg.id;
+  mainWindow.webContents.downloadURL(arg.url);
+});
+
+/*
+ipcMain.on('cancelDownload', (event, arg) => {
+  if (arg.id !== null && arg.id !== undefined && arg.id !== '') {
+    currentDownloadAction = 'cancel';
+    currentDownloadID = arg.id;
+    mainWindow.webContents.downloadURL(arg.url);
+  }
+});
+*/
 
 ipcMain.on('resizeWindow', (event, arg) => {
   const w = arg.width;
@@ -179,7 +200,6 @@ ipcMain.on('resizeWindow', (event, arg) => {
   app.commandLine.appendSwitch('disable-http-cache');
 	await app.whenReady();
 	createWindow();
-  //createDownloadWindow();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -208,20 +228,40 @@ ipcMain.on('resizeWindow', (event, arg) => {
       closeWindowTimeout = 0;
     }
 
-    const id = Math.floor(Math.random() * 10000000);
     let fileName = item.getFilename();
     const ext = path.extname(fileName).replace(/\./g, '').toUpperCase(); // Posiblemente quitar
     const bytes = item.getTotalBytes();
     const realPath = item.getSavePath();
+    const downloadedFrom = item.getURL();
     //const basePath = app.getPath("downloads") + "/";
 
-    downloadWindow.webContents.send('newFile', { 
-      id: id,
-      fileName: fileName,
-      extension: ext,
-      fullPath: realPath,
-      bytes: bytes
-    });
+    //currentDownloadAction
+    //currentDownloadID
+    let id;
+    
+    switch(currentDownloadAction) {
+      case 'retry':
+        id = currentDownloadID;
+        break;
+    //case 'cancel':
+    //  id = currentDownloadID;
+    //  item.cancel();
+    //  downloadWindow.webContents.send('downloadCancelled', { id: id });
+    //  break;
+      default:
+        id = Math.floor(Math.random() * 10000000);
+        downloadWindow.webContents.send('newFile', { 
+          id: id,
+          fileName: fileName,
+          extension: ext,
+          fullPath: realPath,
+          bytes: bytes,
+          downloadedFrom: downloadedFrom
+        });
+    }
+    
+    currentDownloadAction = '';
+    currentDownloadID = '';
 
     item.on('updated', (event, state) => {
       if (state === 'interrupted') {
@@ -231,7 +271,7 @@ ipcMain.on('resizeWindow', (event, arg) => {
           console.log(`Descarga del archivo ${fileName} pausada`);
         } else {
           const perc = (item.getReceivedBytes() / bytes) * 100;
-          downloadWindow.webContents.send('downloadingFile', { id: id, perc: perc });
+          downloadWindow.webContents.send('downloadingFile', { id: id, perc: perc }); // ERROR (dowloadWindow es null)
         }
       }
     });
@@ -239,14 +279,15 @@ ipcMain.on('resizeWindow', (event, arg) => {
     item.once('done', (event, state) => {
       if (state === 'completed') {
         downloadWindow.webContents.send('fileDownloaded', { id: id });
+        console.log('completed');
       } else {
-        console.log(`Error descargando el archivo ${fileName}`);
+        downloadWindow.webContents.send('downloadCancelled', { id: id });
+        console.log('non completed');
       }
     });
 
   });
 })();
-
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
