@@ -37,6 +37,28 @@ const MENU = {
       accelerator: process.platform === 'darwin' ? 'Alt+Cmd+Space' : 'Alt+Shift+Space',
       click: () => { zoomReset(); }
     },
+
+    {
+      label: 'Toggle Navigation Menu',
+      accelerator: 'Shift+4',
+      click: () => {
+        mainWindow.webContents.sendInputEvent({
+          type: "keyDown",
+          modifiers: ["shift"],
+          keyCode: "4",
+        });
+        mainWindow.webContents.sendInputEvent({
+          type: "char",
+          modifiers: ["shift"],
+          keyCode: "4",
+        });
+        mainWindow.webContents.sendInputEvent({
+          type: "keyUp",
+          modifiers: ["shift"],
+          keyCode: "4",
+        });
+      }
+    },
     
     { type: 'separator' },
     { role: 'about' },
@@ -80,7 +102,7 @@ const createWindow = () => {
   mainWindow.maximize();
   mainWindow.show();
   
-  mainWindow.loadURL(PROD_URL, {userAgent: 'SkyLab'});
+  mainWindow.loadURL(DEBUG_URL, {userAgent: 'SkyLab'});
 };
 
 const zoomIn = () => {
