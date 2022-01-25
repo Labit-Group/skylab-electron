@@ -1,13 +1,18 @@
 const { app, BrowserWindow, Menu, MenuItem, shell, ipcMain } = require('electron')
 const path = require('path');
 
-const DEBUG_URL = 'http://localhost:5000';
-const PROD_URL = 'https://skylab.labit.es';
+//const DEBUG_URL = 'http://localhost:5000';
+//const PROD_URL = 'https://skylab.labit.es';
 
-const SLACK_FILE_SERVER = 'https://files.slack.com/';
+const pjson = require("./package.json");
+const OS = process.platform === "darwin" ? "mac" : "windows"; // darwin / win32 /  linux / others...
+
+const PROD_URL = "https://skylab.labit.es?skylab-version=" + pjson.version + "&os=" + OS;
+
+
+//const SLACK_FILE_SERVER = 'https://files.slack.com/';
 const NEW_WINDOW_BROWSER_URL = '/openexternal';
 
-//const OS = process.platform; //darwin / win32 /  linux / others...
 const MENU = {
   label: 'Options',
   submenu: [
@@ -102,7 +107,7 @@ const createWindow = () => {
   mainWindow.maximize();
   mainWindow.show();
   
-  mainWindow.loadURL(DEBUG_URL, {userAgent: 'SkyLab'});
+  mainWindow.loadURL(PROD_URL, {userAgent: 'SkyLab'});
 };
 
 const zoomIn = () => {
@@ -150,7 +155,7 @@ const createDownloadWindow = async () => {
     type: 'toolbar',
     transparent: true,
     webPreferences: {
-      devTools: true,
+      devTools: false,
       nodeIntegration: true,
       contextIsolation: false,
     }
@@ -158,7 +163,7 @@ const createDownloadWindow = async () => {
 
   resizeDownloadWindow();
   downloadWindow.loadFile(path.join(__dirname, 'downloadProgress', 'downloadProgress.html'));
-  downloadWindow.webContents.openDevTools();
+  //downloadWindow.webContents.openDevTools();
 
   return new Promise((resolve) => { downloadWindow.webContents.on('did-finish-load', () => { setTimeout(() => resolve(), 500 ) }); });
 };
