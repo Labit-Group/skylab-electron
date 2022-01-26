@@ -1,75 +1,99 @@
-const { app, BrowserWindow, Menu, MenuItem, shell, ipcMain } = require('electron')
+const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron')
 const path = require('path');
+const pjson = require("./package.json");
 
 //const DEBUG_URL = 'http://localhost:5000';
-//const PROD_URL = 'https://skylab.labit.es';
+const PROD_URL = 'https://skylab.labit.es';
+const OS = process.platform === "darwin" ? "mac" : process.platform === "windows" ? "win" : "linux";
+const URL = PROD_URL + "?skylab-version=" + pjson.version + "&os=" + OS;
 
-const pjson = require("./package.json");
-const OS = process.platform === "darwin" ? "mac" : "windows"; // darwin / win32 /  linux / others...
+const icon = {
+  "mac": path.join("assets", "icons", "mac", "icon.icns"),
+  "linux": path.join("assets", "icons", "png", "icon96x96.png"),
+  "win": path.join("assets", "icons", "win", "icon.ico")
+}
 
-const PROD_URL = "https://skylab.labit.es?skylab-version=" + pjson.version + "&os=" + OS;
-
-
-//const SLACK_FILE_SERVER = 'https://files.slack.com/';
 const NEW_WINDOW_BROWSER_URL = '/openexternal';
 
-const MENU = {
-  label: 'Options',
-  submenu: [
-    { type: 'separator' },
-    { role: 'reload' },
-    { role: 'forcereload' },
-    { role: 'togglefullscreen' },
-    { role: 'toggledevtools' },
-    { type: 'separator' },
-    { role: 'resetzoom' },
-    { role: 'zoomin' },
-    { role: 'zoomout' },
-    { type: 'separator' },
-
-    {
-      label: 'Zoom In',
-      accelerator: process.platform === 'darwin' ? 'Alt+Cmd+Up' : 'Alt+Shift+Up',
-      click: () => { zoomIn(); }
-    },
-    {
-      label: 'Zoom Out',
-      accelerator: process.platform === 'darwin' ? 'Alt+Cmd+Down' : 'Alt+Shift+Down',
-      click: () => { zoomOut(); }
-    },
-    {
-      label: 'Zoom Reset',
-      accelerator: process.platform === 'darwin' ? 'Alt+Cmd+Space' : 'Alt+Shift+Space',
-      click: () => { zoomReset(); }
-    },
-
-    {
-      label: 'Toggle Navigation Menu',
-      accelerator: 'Shift+4',
-      click: () => {
-        mainWindow.webContents.sendInputEvent({
-          type: "keyDown",
-          modifiers: ["shift"],
-          keyCode: "4",
-        });
-        mainWindow.webContents.sendInputEvent({
-          type: "char",
-          modifiers: ["shift"],
-          keyCode: "4",
-        });
-        mainWindow.webContents.sendInputEvent({
-          type: "keyUp",
-          modifiers: ["shift"],
-          keyCode: "4",
-        });
+const MENU = [
+  {
+    label: 'Options',
+    submenu: [
+      { role: 'reload' },
+      { role: 'forcereload' },
+      { role: 'togglefullscreen' },
+      { role: 'toggledevtools' },
+      { 
+        label: 'Exit',
+        accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Alt+F4',
+        click: () => { app.exit(); }
       }
-    },
-    
-    { type: 'separator' },
-    { role: 'about' },
-    { role: 'help' }
-  ]
-};
+    ]
+  }, {
+    label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' }
+      ]
+  }, {
+    label: 'Skylab Window',
+    submenu: [
+      {
+        label: 'Zoom Reset',
+        accelerator: process.platform === 'darwin' ? 'Alt+Cmd+Space' : 'Alt+Shift+Space',
+        click: () => { zoomReset(); }
+      }, {
+        label: 'Zoom In',
+        accelerator: process.platform === 'darwin' ? 'Alt+Cmd+Up' : 'Alt+Shift+Up',
+        click: () => { zoomIn(); }
+      }, {
+        label: 'Zoom Out',
+        accelerator: process.platform === 'darwin' ? 'Alt+Cmd+Down' : 'Alt+Shift+Down',
+        click: () => { zoomOut(); }
+      }
+    ]
+  }, {
+    label: 'IFrames',
+    submenu: [
+      { 
+        role: 'resetzoom',
+        label: 'Zoom Reset'
+      }, { 
+        role: 'zoomin',
+        label: 'Zoom In'
+      }, { 
+        role: 'zoomout',
+        label: 'Zoom Out'
+      }, { 
+        type: 'separator' },
+      {
+        label: 'Toggle Navigation Menu',
+        accelerator: 'Shift+4',
+        click: () => {
+          mainWindow.webContents.sendInputEvent({
+            type: "keyDown",
+            modifiers: ["shift"],
+            keyCode: "4",
+          });
+          mainWindow.webContents.sendInputEvent({
+            type: "char",
+            modifiers: ["shift"],
+            keyCode: "4",
+          });
+          mainWindow.webContents.sendInputEvent({
+            type: "keyUp",
+            modifiers: ["shift"],
+            keyCode: "4",
+          });
+        }
+      },
+    ]
+  }
+];
 
 let downloadWindowProperties = {
   width: 0,
@@ -102,12 +126,12 @@ const createWindow = () => {
       sandbox: true,
       */
     },
-    icon: path.join(__dirname, 'assets', 'skylab-dark.png')
+    icon: path.join(__dirname, icon[OS])
   });
   mainWindow.maximize();
   mainWindow.show();
   
-  mainWindow.loadURL(PROD_URL, {userAgent: 'SkyLab'});
+  mainWindow.loadURL(URL, {userAgent: 'SkyLab'});
 };
 
 const zoomIn = () => {
@@ -128,9 +152,7 @@ const zoomReset = () => {
 };
 
 const createMenu = () => {
-  const menu = new Menu();
-  menu.append(new MenuItem(MENU));
-
+  const menu = new Menu.buildFromTemplate(MENU);
   Menu.setApplicationMenu(menu);
 };
 
