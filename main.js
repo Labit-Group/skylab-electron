@@ -2,6 +2,8 @@ const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron')
 const path = require('path');
 const pjson = require("./package.json");
 
+const SLACK_FILE_SERVER = "https://files.slack.com/";
+
 //const DEBUG_URL = 'http://localhost:5000';
 const PROD_URL = 'https://skylab.labit.es';
 const OS = process.platform === "darwin" ? "mac" : process.platform === "windows" ? "win" : "linux";
@@ -187,7 +189,7 @@ const createDownloadWindow = async () => {
   downloadWindow.loadFile(path.join(__dirname, 'downloadProgress', 'downloadProgress.html'));
   //downloadWindow.webContents.openDevTools();
 
-  return new Promise((resolve) => { downloadWindow.webContents.on('did-finish-load', () => { setTimeout(() => resolve(), 500 ) }); });
+  return new Promise((resolve) => { downloadWindow.webContents.on('did-finish-load', () => { setTimeout(() => resolve(), 200 ) }); });
 };
 
 ipcMain.on('closeDownloadWindow', (event, args) => {
@@ -255,9 +257,19 @@ ipcMain.on('resizeWindow', (event, arg) => {
   });
 
   app.on('browser-window-created', (e, window) => {
+    /* Evita que aparezcan varias ventanas a la hora de descargar desde slack */    
     window.setMenu(null);
 
-    window.webContents.on('new-window', (e, url) => {
+    window.webContents.on('will-navigate', (e,url) => {
+      if (url.startsWith(SLACK_FILE_SERVER)) {
+        e.preventDefault();
+        window.close();
+        window.destroy();
+      }
+    });
+    /* Evita que aparezcan varias ventanas a la hora de descargar desde slack */
+
+    window.webContents.setWindowOpenHandler((e, url) => {
       if (url.includes(NEW_WINDOW_BROWSER_URL + '/#/')) {
         e.preventDefault();
         const tokens = url.split('/#/');
@@ -267,6 +279,17 @@ ipcMain.on('resizeWindow', (event, arg) => {
       }
     });
   });
+
+  /*
+  app.on('browser-window-created', (e, bw) => {
+    bw.on('ready-to-show', () => { bw.destroy(); });
+  });
+  */
+  /*
+  app.on('web-contents-created', (e, wc) => {
+    wc.on('did-finish-load', () => { console.log(wc.getURL()); });
+  });
+  */
 
   mainWindow.webContents.session.on('will-download', async (event, item) => {
 
