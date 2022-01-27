@@ -248,7 +248,7 @@ ipcMain.on('resizeWindow', (event, arg) => {
 (async () => {
   createMenu();
 
-  app.commandLine.appendSwitch('disable-http-cache');
+  //app.commandLine.appendSwitch('disable-http-cache');
 	await app.whenReady();
 	createWindow();
 
@@ -305,8 +305,14 @@ ipcMain.on('resizeWindow', (event, arg) => {
 
     bws.forEach((e) => {
       const wc = e.webContents;
-      const url = wc.getURL();
-      if (url === '') e.close();
+      const url = wc.getURL();      
+      if (url === '') { 
+        if (OS !== 'mac') {
+          e.close();
+        } else {
+          e.setOpacity(0);
+        };
+      }; 
     });
 
     const downloadedFrom = item.getURL();
@@ -347,7 +353,9 @@ ipcMain.on('resizeWindow', (event, arg) => {
           console.log(`Descarga del archivo ${fileName} pausada`);
         } else {
           const perc = (item.getReceivedBytes() / bytes) * 100;
-          downloadWindow.webContents.send('downloadingFile', { id: id, perc: perc });
+          if (downloadWindow !== null && downloadWindow !== undefined) {
+            downloadWindow.webContents.send('downloadingFile', { id: id, perc: perc });
+          }
         }
       }
     });
