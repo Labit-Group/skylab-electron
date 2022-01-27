@@ -13,7 +13,7 @@ jQuery(document).ready(($) => {
   });
 
   ipcRenderer.on('fileDownloaded', (event, args) => {
-    fileDownloaded(args.id);
+    fileDownloaded(args.id, args.fullPath);
   });
 
   ipcRenderer.on('downloadCancelled', (event, args) => {
@@ -74,7 +74,7 @@ jQuery(document).ready(($) => {
     });
   };
   
-  const fileDownloaded = (id) => {
+  const fileDownloaded = (id, path) => {
     downloadingFile(id, 100);
     const file = files.find((item) => {
       return item.id === id;
@@ -104,10 +104,10 @@ jQuery(document).ready(($) => {
     });
     el.find("div.folder").click((ev) => {
       ev.stopPropagation();
-      openFolder();
+      openFolder(path);
     });
     el.click(() => {
-      openFolder(id);
+      openFolder(path);
     });
   
     el.find("div.bar").remove();
@@ -136,11 +136,8 @@ jQuery(document).ready(($) => {
     resizeWindow();
   };
   
-  const openFolder = (id) => {
-    const file = files.find((item) => {
-      return item.id === id;
-    });
-    ipcRenderer.send('openFolder', { fullPath: file.fullPath });
+  const openFolder = (path) => {
+    ipcRenderer.send('openFolder', { fullPath: path });
   };
   
   const retryDownload = (id) => {

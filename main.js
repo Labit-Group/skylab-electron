@@ -201,11 +201,11 @@ ipcMain.on('closeDownloadWindow', (event, args) => {
   }, 5000);
 });
 
-ipcMain.on('openFile', (event, arg) => {
+ipcMain.on('openFolder', (event, arg) => {
   if (arg.fullPath === '') {
-    open(app.getPath('downloads'));
+    shell.showItemInFolder(app.getPath('downloads'));
   } else {
-    open(arg.fullPath);
+    shell.showItemInFolder(arg.fullPath);
   }
 });
 
@@ -289,40 +289,7 @@ ipcMain.on('resizeWindow', (event, arg) => {
         }
       }
     });
-
-    /*
-    window.webContents.on("did-attach-webview", (ev, webContents) => {
-      ev.preventDefault();
-      webContents.on("new-window", (ev) => { ev.preventDefault(); });
-    });
-    */
-    
   });
-
-  /*  
-  mainWindow.on('blur', () => {
-    const bws = BrowserWindow.getAllWindows();
-    //const bw = BrowserWindow.fromId(bws[1]);
-    //bw.close();
-
-    bws.forEach((e) => {
-      const elem = e.webContents;
-      console.log("URL: " + elem.getURL());
-      console.log("ID: " + elem.id);
-      console.log("TITLE" + elem.getTitle());
-      console.log("TYPE" + elem.getType());
-      console.log("\n");
-      console.log("\n");
-      
-      //if (url === '') {
-      //  console.log("Hiding and Resizing...");
-      //  //e.hide();
-      //  e.setSize(0,0);
-      //}
-      
-    });
-  });
-  */
 
   mainWindow.webContents.session.on('will-download', async (event, item) => {
 
@@ -346,10 +313,8 @@ ipcMain.on('resizeWindow', (event, arg) => {
     let fileName = item.getFilename();
     const ext = path.extname(fileName).replace(/\./g, '').toUpperCase(); 
     const bytes = item.getTotalBytes();
-    const realPath = item.getSavePath();
     
     let id;
-    
     switch(currentDownloadAction) {
       case 'retry':
         id = currentDownloadID;
@@ -359,13 +324,13 @@ ipcMain.on('resizeWindow', (event, arg) => {
     //  item.cancel();
     //  downloadWindow.webContents.send('downloadCancelled', { id: id });
     //  break;
-      default:
+      default:        
         id = Math.floor(Math.random() * 10000000);
         downloadWindow.webContents.send('newFile', { 
           id: id,
           fileName: fileName,
           extension: ext,
-          fullPath: realPath,
+          fullPath: '',
           bytes: bytes,
           downloadedFrom: downloadedFrom
         });
@@ -389,7 +354,8 @@ ipcMain.on('resizeWindow', (event, arg) => {
 
     item.once('done', (event, state) => {
       if (state === 'completed') {
-        downloadWindow.webContents.send('fileDownloaded', { id: id });
+        const downloadPath = item.getSavePath();
+        downloadWindow.webContents.send('fileDownloaded', { id: id, fullPath: downloadPath});
         console.log('completed');
       } else {
         downloadWindow.webContents.send('downloadCancelled', { id: id });
