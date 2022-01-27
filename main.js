@@ -114,7 +114,7 @@ const createWindow = () => {
     show: false,
     webPreferences: {
       
-      preload: path.join(__dirname, 'preload.js'),
+      //preload: path.join(__dirname, 'preload.js'),
       webviewTag: true, // default: false
       //webSecurity: false, // default: true
       nodeIntegration: true,
@@ -258,13 +258,24 @@ ipcMain.on('resizeWindow', (event, arg) => {
 
   app.on('browser-window-created', (e, window) => {
     /* Evita que aparezcan varias ventanas a la hora de descargar desde slack */    
-    window.setMenu(null);
+    const menu = new Menu.buildFromTemplate(MENU);
+    window.setMenu(menu);
+
+
+    window.webContents.setWindowOpenHandler(({ url }) => {
+      if (url === undefined) {
+        return { action: 'deny' };
+      } else {
+        return { action: 'allow' };
+      }
+    });
 
     window.webContents.on('will-navigate', (e,url) => {
-      if (url.startsWith(SLACK_FILE_SERVER)) {
+      if (url === '' || url.startsWith(SLACK_FILE_SERVER)) {
         e.preventDefault();
         window.close();
         window.destroy();
+        window = null;
       }
     });
     /* Evita que aparezcan varias ventanas a la hora de descargar desde slack */
@@ -278,16 +289,38 @@ ipcMain.on('resizeWindow', (event, arg) => {
         }
       }
     });
+
+    /*
+    window.webContents.on("did-attach-webview", (ev, webContents) => {
+      ev.preventDefault();
+      webContents.on("new-window", (ev) => { ev.preventDefault(); });
+    });
+    */
+    
   });
 
-  /*
-  app.on('browser-window-created', (e, bw) => {
-    bw.on('ready-to-show', () => { bw.destroy(); });
-  });
-  */
-  /*
-  app.on('web-contents-created', (e, wc) => {
-    wc.on('did-finish-load', () => { console.log(wc.getURL()); });
+  /*  
+  mainWindow.on('blur', () => {
+    const bws = BrowserWindow.getAllWindows();
+    //const bw = BrowserWindow.fromId(bws[1]);
+    //bw.close();
+
+    bws.forEach((e) => {
+      const elem = e.webContents;
+      console.log("URL: " + elem.getURL());
+      console.log("ID: " + elem.id);
+      console.log("TITLE" + elem.getTitle());
+      console.log("TYPE" + elem.getType());
+      console.log("\n");
+      console.log("\n");
+      
+      //if (url === '') {
+      //  console.log("Hiding and Resizing...");
+      //  //e.hide();
+      //  e.setSize(0,0);
+      //}
+      
+    });
   });
   */
 
@@ -300,15 +333,21 @@ ipcMain.on('resizeWindow', (event, arg) => {
       closeWindowTimeout = 0;
     }
 
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const bws = BrowserWindow.getAllWindows();
+
+    bws.forEach((e) => {
+      const wc = e.webContents;
+      const url = wc.getURL();
+      if (url === '') e.close();
+    });
+
+    const downloadedFrom = item.getURL();
     let fileName = item.getFilename();
-    const ext = path.extname(fileName).replace(/\./g, '').toUpperCase(); // Posiblemente quitar
+    const ext = path.extname(fileName).replace(/\./g, '').toUpperCase(); 
     const bytes = item.getTotalBytes();
     const realPath = item.getSavePath();
-    const downloadedFrom = item.getURL();
-    //const basePath = app.getPath("downloads") + "/";
-
-    //currentDownloadAction
-    //currentDownloadID
+    
     let id;
     
     switch(currentDownloadAction) {
@@ -343,7 +382,7 @@ ipcMain.on('resizeWindow', (event, arg) => {
           console.log(`Descarga del archivo ${fileName} pausada`);
         } else {
           const perc = (item.getReceivedBytes() / bytes) * 100;
-          downloadWindow.webContents.send('downloadingFile', { id: id, perc: perc }); // ERROR (dowloadWindow es null)
+          downloadWindow.webContents.send('downloadingFile', { id: id, perc: perc });
         }
       }
     });
