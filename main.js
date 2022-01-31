@@ -264,6 +264,7 @@ ipcMain.on('resizeWindow', (event, arg) => {
 
     browserWindow.webContents.setWindowOpenHandler(({ url }) => {
       if (url.startsWith(SLACK_FILE_SERVER)) {
+        browserWindow.setSize(0,0);
         browserWindow.hide();
       }
 
