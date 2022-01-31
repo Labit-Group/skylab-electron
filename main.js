@@ -7,7 +7,7 @@ const SLACK_FILE_SERVER = "https://files.slack.com/";
 const DEBUG_URL = 'http://localhost:5000';
 const PROD_URL = 'https://skylab.labit.es';
 const OS = process.platform === "darwin" ? "mac" : process.platform === "windows" ? "win" : "linux";
-const URL = PROD_URL + "?skylab-version=" + pjson.version + "&os=" + OS;
+const URL = DEBUG_URL + "?skylab-version=" + pjson.version + "&os=" + OS;
 
 const icon = {
   "mac": path.join("assets", "icons", "mac", "icon.icns"),
@@ -272,14 +272,15 @@ ipcMain.on('resizeWindow', (event, arg) => {
 
     window.webContents.on('will-navigate', (e,url) => {
 //      if (url === '' || url.startsWith(SLACK_FILE_SERVER)) {
-        e.preventDefault();
-        window.close();
-        window.destroy();
-        window = null;
+      e.preventDefault();
+      window.close();
+      window.destroy();
+      window = null;
 //      }
     });
     /* Evita que aparezcan varias ventanas a la hora de descargar desde slack */
 
+    /*
     window.webContents.setWindowOpenHandler((e, url) => {
       if (url.includes(NEW_WINDOW_BROWSER_URL + '/#/')) {
         e.preventDefault();
@@ -289,6 +290,7 @@ ipcMain.on('resizeWindow', (event, arg) => {
         }
       }
     });
+    */
   });
 
   mainWindow.webContents.session.on('will-download', async (event, item) => {
