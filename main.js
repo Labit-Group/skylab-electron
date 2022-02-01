@@ -248,7 +248,7 @@ ipcMain.on('resizeWindow', (event, arg) => {
 (async () => {
   createMenu();
 
-  //app.commandLine.appendSwitch('disable-http-cache');
+  app.commandLine.appendSwitch('disable-http-cache');
 	await app.whenReady();
 	createWindow();
 
@@ -257,45 +257,24 @@ ipcMain.on('resizeWindow', (event, arg) => {
   });
 
   app.on('browser-window-created', (e, browserWindow) => {
-    /* Evita que aparezcan varias ventanas a la hora de descargar desde slack */    
-    const menu = new Menu.buildFromTemplate(MENU);
-    browserWindow.setMenu(menu);
-
-
-    browserWindow.webContents.setWindowOpenHandler(({ url }) => {
-      if (url.startsWith(SLACK_FILE_SERVER)) {
-        browserWindow.setSize(0,0);
-        browserWindow.hide();
-      }
-
-      if (url === undefined) {
-        return { action: 'deny' };
-      } else {
-        return { action: 'allow' };
-      }
-    });
-
+    const initialPosition = browserWindow.getPosition();
+    browserWindow.setSize(0, 0, false);
+    browserWindow.setPosition(-200, -200);
+    
     browserWindow.webContents.on('will-navigate', (e,url) => {
-//      if (url === '' || url.startsWith(SLACK_FILE_SERVER)) {
-      e.preventDefault();
-      browserWindow.close();
-      browserWindow.destroy();
-      browserWindow = null;
-//      }
-    });
-    /* Evita que aparezcan varias ventanas a la hora de descargar desde slack */
-
-    /*
-    window.webContents.setWindowOpenHandler((e, url) => {
-      if (url.includes(NEW_WINDOW_BROWSER_URL + '/#/')) {
+      console.log('url: ' + url);
+      if (url.startsWith(SLACK_FILE_SERVER) || url === undefined || url === null || url === '') {
         e.preventDefault();
-        const tokens = url.split('/#/');
-        if (tokens.length > 1) {
-          shell.openExternal(tokens[1]);
-        }
+        browserWindow.close();
+        browserWindow.destroy();
+        browserWindow = null;
+      } else {
+        console.log(`Position: ${initialPosition[0]}, ${initialPosition[1]}`);
+        browserWindow.setPosition(initialPosition[0], initialPosition[1]);
+        browserWindow.setSize(800, 600, false);
+        browserWindow.show();
       }
     });
-    */
   });
 
   mainWindow.webContents.session.on('will-download', async (event, item) => {
