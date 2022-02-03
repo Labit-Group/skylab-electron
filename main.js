@@ -1,4 +1,5 @@
 const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron')
+const Store = require('electron-store');
 const path = require('path');
 const pjson = require("./package.json");
 
@@ -15,7 +16,22 @@ const icon = {
   "win": path.join("assets", "icons", "win", "icon.ico")
 }
 
-const NEW_WINDOW_BROWSER_URL = '/openexternal';
+const store = new Store();
+
+//const NEW_WINDOW_BROWSER_URL = '/openexternal';
+
+
+let downloadWindowProperties = {
+  width: 0,
+  height: 0,
+  x: 0,
+  y: 0
+};
+
+let mainWindow, downloadWindow;
+let zoomLevel = 0, closeWindowTimeout = 0;
+let currentDownloadAction = '';
+let currentDownloadID = '';
 
 const MENU = [
   {
@@ -97,53 +113,97 @@ const MENU = [
   }
 ];
 
-let downloadWindowProperties = {
-  width: 0,
-  height: 0,
-  x: 0,
-  y: 0
+const saveWindowProperties = () => {
+  const size = mainWindow.getSize();
+  const position = mainWindow.getPosition();
+  const maximized = mainWindow.isMaximized();
+  const windowProps = {
+    window: {
+      size: {
+        width: size[0], 
+        height: size[1]
+      },
+      position: {
+        x: position[0],
+        y: position[1]
+      },
+      maximized: maximized
+    }
+  }
+  console.log(windowProps);
+  store.set(windowProps);
 };
 
-let mainWindow, downloadWindow;
-let zoomLevel = 0, closeWindowTimeout = 0;
-let currentDownloadAction = '';
-let currentDownloadID = '';
-
 const createWindow = () => {
-  mainWindow = new BrowserWindow({
-    show: false,
-    webPreferences: {
+  let options;
+  if (store.has('window.maximized') && store.has('window.maximized') && store.has('window.maximized')) {
+    const size = store.get('window.size');
+    const position = store.get('window.position');
+
+    options = {
+      width: size.width,
+      height: size.height,
+      x: position.x,
+      y: position.y,
       
-      //preload: path.join(__dirname, 'preload.js'),
-      webviewTag: true, // default: false
-      //webSecurity: false, // default: true
-      nodeIntegration: true,
-      contextIsolation: false, // default: true -- Para ejecutar apis de electron y preload en otro contexto (mal)
-      
-      /* lo mas seguro
-      preload: path.join(__dirname, './preload.js'),
-      nodeIntegration: false,
-      enableRemoteModule: false,
-      contextIsolation: true,
-      sandbox: true,
-      */
-    },
-    icon: path.join(__dirname, icon[OS])
-  });
-  mainWindow.maximize();
+      show: false,
+      webPreferences: {
+        webviewTag: true,
+        nodeIntegration: true,
+        contextIsolation: false
+      },
+      icon: path.join(__dirname, icon[OS])
+    }
+  } else {
+    options = {
+      show: false,
+      webPreferences: {
+        
+        //preload: path.join(__dirname, 'preload.js'),
+        webviewTag: true, // default: false
+        //webSecurity: false, // default: true
+        nodeIntegration: true,
+        contextIsolation: false, // default: true -- Para ejecutar apis de electron y preload en otro contexto (mal)
+        
+        /* lo mas seguro
+        preload: path.join(__dirname, './preload.js'),
+        nodeIntegration: false,
+        enableRemoteModule: false,
+        contextIsolation: true,
+        sandbox: true,
+        */
+      },
+      icon: path.join(__dirname, icon[OS])
+    }
+  }
+
+  mainWindow = new BrowserWindow(options);
+
+  //mainWindow.maximize();
   mainWindow.show();
-  
   mainWindow.loadURL(URL, {userAgent: 'SkyLab'});
+
+  mainWindow.on('resized', () => {
+    saveWindowProperties();
+  });
+  
+  mainWindow.on('moved', () => {
+    saveWindowProperties();
+  });
+  
+  mainWindow.on('close', () => {
+    saveWindowProperties();
+  });
 };
 
 const zoomIn = () => {
-  zoomLevel += 0.025;
+  zoomLevel += 0.050;
   if (zoomLevel > 3) zoomLevel = 3;
   mainWindow.webContents.setZoomLevel(zoomLevel);
 };
 
 const zoomOut = () => {
-  zoomLevel -= 0.025;
+  zoomLevel -= 0.050;
   if (zoomLevel < -3) zoomLevel = -3;
   mainWindow.webContents.setZoomLevel(zoomLevel);
 };
@@ -362,5 +422,4 @@ ipcMain.on('resizeWindow', (event, arg) => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
-  //progressInterval.forEach((e) => clearInterval(e));
 });
