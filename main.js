@@ -113,7 +113,7 @@ const MENU = [
   }
 ];
 
-const saveWindowProperties = () => {
+const saveMainWindowProperties = () => {
   const size = mainWindow.getSize();
   const position = mainWindow.getPosition();
   const maximized = mainWindow.isMaximized();
@@ -130,7 +130,6 @@ const saveWindowProperties = () => {
       maximized: maximized
     }
   }
-  console.log(windowProps);
   store.set(windowProps);
 };
 
@@ -184,15 +183,15 @@ const createWindow = () => {
   mainWindow.loadURL(URL, {userAgent: 'SkyLab'});
 
   mainWindow.on('resized', () => {
-    saveWindowProperties();
+    saveMainWindowProperties();
   });
   
   mainWindow.on('moved', () => {
-    saveWindowProperties();
+    saveMainWindowProperties();
   });
   
   mainWindow.on('close', () => {
-    saveWindowProperties();
+    saveMainWindowProperties();
   });
 };
 
@@ -239,7 +238,7 @@ const createDownloadWindow = async () => {
     type: 'toolbar',
     transparent: true,
     webPreferences: {
-      devTools: false,
+      devTools: true,
       nodeIntegration: true,
       contextIsolation: false,
     }
@@ -247,19 +246,21 @@ const createDownloadWindow = async () => {
 
   resizeDownloadWindow();
   downloadWindow.loadFile(path.join(__dirname, 'downloadProgress', 'downloadProgress.html'));
-  //downloadWindow.webContents.openDevTools();
+  downloadWindow.webContents.openDevTools();
 
   return new Promise((resolve) => { downloadWindow.webContents.on('did-finish-load', () => { setTimeout(() => resolve(), 200 ) }); });
 };
 
-ipcMain.on('closeDownloadWindow', (event, args) => {
+const closeDownloadWindow = (now) => {
   resizeDownloadWindow();
-  if (args === 0) closeWindowTimeout = setTimeout(() => { 
+  
+  // Guardo el ID del timeout en una variable para poder cancelar la eliminacion de la ventana si descargo de nuevo
+  closeWindowTimeout = setTimeout(() => {
     if (downloadWindow !== null) { 
       downloadWindow.destroy(); downloadWindow = null; 
     } 
-  }, 5000);
-});
+  }, now ? 0 : 5000);
+};
 
 ipcMain.on('openFolder', (event, arg) => {
   if (arg.fullPath === '') {
@@ -284,6 +285,18 @@ ipcMain.on('cancelDownload', (event, arg) => {
   }
 });
 */
+
+ipcMain.on('removeFile', (event, arg) => {
+  if (arg.cancelDownload) {
+    currentDownloadAction = 'cancel';
+    currentDownloadID = arg.id;
+    mainWindow.webContents.downloadURL(arg.url);
+  }
+
+  if (arg.closeDownloadWindow) {
+    closeDownloadWindow(true);
+  }
+});
 
 ipcMain.on('resizeWindow', (event, arg) => {
   const w = arg.width;
@@ -322,14 +335,12 @@ ipcMain.on('resizeWindow', (event, arg) => {
     browserWindow.setPosition(-200, -200);
     
     browserWindow.webContents.on('will-navigate', (e,url) => {
-      console.log('url: ' + url);
       if (url.startsWith(SLACK_FILE_SERVER) || url === undefined || url === null || url === '') {
         e.preventDefault();
         browserWindow.close();
         browserWindow.destroy();
         browserWindow = null;
       } else {
-        console.log(`Position: ${initialPosition[0]}, ${initialPosition[1]}`);
         browserWindow.setPosition(initialPosition[0], initialPosition[1]);
         browserWindow.setSize(800, 600, false);
         browserWindow.show();
@@ -337,46 +348,49 @@ ipcMain.on('resizeWindow', (event, arg) => {
     });
   });
 
+  let items = {
+    'arr': []
+  };
   mainWindow.webContents.session.on('will-download', async (event, item) => {
 
-    if (!downloadWindow) await createDownloadWindow(); // SOLO UNA VENTANA DE DESCARGA
-
-    if (closeWindowTimeout !== 0) {
-      clearTimeout(closeWindowTimeout);
-      closeWindowTimeout = 0;
-    }
-
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const bws = BrowserWindow.getAllWindows();
-
-    bws.forEach((e) => {
-      const wc = e.webContents;
-      const url = wc.getURL();      
-      if (url === '') { 
-        if (OS !== 'mac') {
-          e.close();
-        } else {
-          e.setOpacity(0);
-        };
-      }; 
-    });
-
+    // El orden TIENE que quedarse asi, si no no funciona
     const downloadedFrom = item.getURL();
     let fileName = item.getFilename();
     const ext = path.extname(fileName).replace(/\./g, '').toUpperCase(); 
     const bytes = item.getTotalBytes();
-    
     let id;
-    switch(currentDownloadAction) {
-      case 'retry':
+
+    if (currentDownloadAction === 'cancel') {
+      event.preventDefault();
+      const index = items[currentDownloadID];
+      items['arr'][index].cancel();
+      //downloadWindow.webContents.send('downloadCancelled', { id: currentDownloadID });
+    } else {
+      if (!downloadWindow) await createDownloadWindow(); // SOLO UNA VENTANA DE DESCARGA
+
+      if (closeWindowTimeout !== 0) {
+        clearTimeout(closeWindowTimeout);
+        closeWindowTimeout = 0;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Espero un segundo para que la ventana de descarga cargue completamente
+      const bws = BrowserWindow.getAllWindows();
+
+      bws.forEach((e) => {
+        const wc = e.webContents;
+        const url = wc.getURL();
+        if (url === '') { 
+          if (OS === 'mac') {
+            e.setOpacity(0);
+          } else {
+            e.close();
+          };
+        }; 
+      });
+      
+      if (currentDownloadAction === 'retry') {
         id = currentDownloadID;
-        break;
-    //case 'cancel':
-    //  id = currentDownloadID;
-    //  item.cancel();
-    //  downloadWindow.webContents.send('downloadCancelled', { id: id });
-    //  break;
-      default:        
+      } else {
         id = Math.floor(Math.random() * 10000000);
         downloadWindow.webContents.send('newFile', { 
           id: id,
@@ -386,8 +400,12 @@ ipcMain.on('resizeWindow', (event, arg) => {
           bytes: bytes,
           downloadedFrom: downloadedFrom
         });
+      }
+
+      items[id] = items.arr.length;
+      items.arr.push(item);
     }
-    
+
     currentDownloadAction = '';
     currentDownloadID = '';
 
@@ -399,7 +417,7 @@ ipcMain.on('resizeWindow', (event, arg) => {
           console.log(`Descarga del archivo ${fileName} pausada`);
         } else {
           const perc = (item.getReceivedBytes() / bytes) * 100;
-          if (downloadWindow !== null && downloadWindow !== undefined) {
+          if (downloadWindow !== null && downloadWindow !== undefined && item.getSavePath() !== '') {
             downloadWindow.webContents.send('downloadingFile', { id: id, perc: perc });
           }
         }
@@ -412,7 +430,7 @@ ipcMain.on('resizeWindow', (event, arg) => {
         downloadWindow.webContents.send('fileDownloaded', { id: id, fullPath: downloadPath});
         console.log('completed');
       } else {
-        downloadWindow.webContents.send('downloadCancelled', { id: id });
+        //downloadWindow.webContents.send('downloadCancelled', { id: id });
         console.log('non completed');
       }
     });

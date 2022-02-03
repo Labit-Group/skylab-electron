@@ -17,7 +17,7 @@ jQuery(document).ready(($) => {
   });
 
   ipcRenderer.on('downloadCancelled', (event, args) => {
-    downloadCancelled(args.id);
+    removeFile(args.id);
   });
   
   const getTemplate = (selector) => {
@@ -31,8 +31,7 @@ jQuery(document).ready(($) => {
     contents.attr("id", id);
     contents.find("span.fileName").text(fileName);
     contents.find("div.icon").click(() => {
-      cancelDownload(id);
-      removeFile(id);
+      removeFile(id, true);
     });
     $("#container").append(contents);
     files.push({
@@ -51,27 +50,6 @@ jQuery(document).ready(($) => {
   const downloadingFile = (id, perc) => {
     const el = $("#" + id);
     el.find("#percBar").css("width", perc + "%");
-  };
-  
-  const downloadCancelled = (id) => {
-    const el = $("#" + id);
-    el.find("#percBar").css("background-color", "#ff9942");
-    
-    //el.find('.icon img').attr('src', 'img/retry.svg'); //retry.svg
-
-    el.find('.icons').prepend( 
-      `
-        <div id="retry" class="icon fadedButton">
-          <img src="img/retry.svg">
-        </div>
-      `
-    );
-    el.find('#retry').on('click', (ev) => {
-      ev.preventDefault();
-      retryDownload(id);
-      el.find("#percBar").css("background-color", "#35425b");
-      el.find('#retry').remove();
-    });
   };
   
   const fileDownloaded = (id, path) => {
@@ -100,7 +78,7 @@ jQuery(document).ready(($) => {
     el.append(contents);
     el.find("div.x").click((ev) => {
       ev.stopPropagation();
-      removeFile(id);
+      removeFile(id, false);
     });
     el.find("div.folder").click((ev) => {
       ev.stopPropagation();
@@ -122,16 +100,21 @@ jQuery(document).ready(($) => {
     setTimeout(() => removeFile(id), REMOVE_TIMER);
   };
   
-  const removeFile = (id) => {
+  const removeFile = (id, cancelDownload = false) => {
+    const file = files.find((item) => {
+      return item.id === id;
+    });
+    
     files = files.filter((item) => {
       return item.id !== id;
     });
-    
+
+    let closeDownloadWindow = true;
     if (files.length > 0) {
       $("#" + id).remove();
-    } else {
-      ipcRenderer.send('closeDownloadWindow', files.length);
+      closeDownloadWindow = false;
     }
+    ipcRenderer.send('removeFile', { id: id, closeDownloadWindow: closeDownloadWindow, cancelDownload: cancelDownload, url: file.downloadedFrom });
   
     resizeWindow();
   };
@@ -140,6 +123,14 @@ jQuery(document).ready(($) => {
     ipcRenderer.send('openFolder', { fullPath: path });
   };
   
+  const resizeWindow = () => {
+    const el = $("body");
+    $('html').height(el.height());
+
+    ipcRenderer.send('resizeWindow', { width: el.width(), height: el.height() + 1, });
+  };
+  
+  /*
   const retryDownload = (id) => {
     const file = files.find((item) => {
       return item.id === id;
@@ -147,20 +138,16 @@ jQuery(document).ready(($) => {
   
     ipcRenderer.send('retryDownload', { id: file.id, url: file.downloadedFrom });
   };
-  
+  */
+ 
+  /*
   const cancelDownload = (id) => {
     console.log( {files: files, id: id} );
     const file = files.find((item) => {
       return item.id === id;
     });
   
-    ipcRenderer.send('cancelDownload', { id: file.id, url: file.downloadedFrom });
+    ipcRenderer.send('cancelDownload', { id: id, url: file.downloadedFrom });
   };
-  
-  const resizeWindow = () => {
-    const el = $("body");
-    $('html').height(el.height());
-
-    ipcRenderer.send('resizeWindow', { width: el.width(), height: el.height() + 1, });
-  };  
+  */
 });
