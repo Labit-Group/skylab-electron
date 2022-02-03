@@ -218,9 +218,11 @@ const createMenu = () => {
 };
 
 const resizeDownloadWindow = () => {
-  downloadWindow.setSize(downloadWindowProperties.width, downloadWindowProperties.height + 20);
-  downloadWindow.setMaximumSize(downloadWindowProperties.width, downloadWindowProperties.height + 20);
-  downloadWindow.setPosition(downloadWindowProperties.x - 4, downloadWindowProperties.y - 4);
+  if (downloadWindow !== null && downloadWindow !== undefined) {
+    downloadWindow.setSize(downloadWindowProperties.width, downloadWindowProperties.height + 20);
+    downloadWindow.setMaximumSize(downloadWindowProperties.width, downloadWindowProperties.height + 20);
+    downloadWindow.setPosition(downloadWindowProperties.x - 4, downloadWindowProperties.y - 4);
+  }
 };
 
 const createDownloadWindow = async () => {
