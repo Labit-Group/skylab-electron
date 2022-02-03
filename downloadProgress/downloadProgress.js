@@ -50,6 +50,7 @@ jQuery(document).ready(($) => {
   const downloadingFile = (id, perc) => {
     const el = $("#" + id);
     el.find("#percBar").css("width", perc + "%");
+    resizeWindow();
   };
   
   const fileDownloaded = (id, path) => {
@@ -129,7 +130,7 @@ jQuery(document).ready(($) => {
 
     ipcRenderer.send('resizeWindow', { width: el.width(), height: el.height() + 1, });
   };
-  
+
   /*
   const retryDownload = (id) => {
     const file = files.find((item) => {
