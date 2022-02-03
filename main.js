@@ -238,7 +238,7 @@ const createDownloadWindow = async () => {
     type: 'toolbar',
     transparent: true,
     webPreferences: {
-      devTools: true,
+      devTools: false,
       nodeIntegration: true,
       contextIsolation: false,
     }
@@ -246,7 +246,7 @@ const createDownloadWindow = async () => {
 
   resizeDownloadWindow();
   downloadWindow.loadFile(path.join(__dirname, 'downloadProgress', 'downloadProgress.html'));
-  downloadWindow.webContents.openDevTools();
+  //downloadWindow.webContents.openDevTools();
 
   return new Promise((resolve) => { downloadWindow.webContents.on('did-finish-load', () => { setTimeout(() => resolve(), 200 ) }); });
 };
