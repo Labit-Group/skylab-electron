@@ -29,7 +29,8 @@ let downloadWindowProperties = {
 };
 
 let mainWindow, downloadWindow;
-let zoomLevel = 0, closeWindowTimeout = 0;
+let zoomLevel = store.get('window.zoom') || 0; 
+let closeWindowTimeout = 0;
 let currentDownloadAction = '';
 let currentDownloadID = '';
 
@@ -192,6 +193,7 @@ const createWindow = () => {
   
   mainWindow.on('close', () => {
     saveMainWindowProperties();
+    store.set('window.zoom', zoomLevel);
   });
 };
 
