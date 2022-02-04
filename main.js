@@ -331,17 +331,24 @@ app.on('window-all-closed', () => {
 /* START */
 
 (async () => {
+  console.time('createMenu');
   createMenu();
+  console.timeEnd('createMenu');
 
   app.commandLine.appendSwitch('disable-http-cache');
 	await app.whenReady();
-	createWindow();
+	
+  console.time('createWindow');
+  createWindow();
+  console.timeEnd('createWindow');
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 
   app.on('browser-window-created', (e, browserWindow) => {
+    
+    console.time('onbrowserwindowcreated');
     const initialPosition = browserWindow.getPosition();
     browserWindow.setSize(0, 0, false);
     browserWindow.setPosition(-200, -200);
@@ -358,6 +365,8 @@ app.on('window-all-closed', () => {
         browserWindow.show();
       }
     });
+    console.timeEnd('onbrowserwindowcreated');
+
   });
 
   let items = {
@@ -385,7 +394,9 @@ app.on('window-all-closed', () => {
     } else {
       cancelDownloadMethod = 'cancelInModalWindow';
       
+      console.time('createdownloadwindow');
       if (!downloadWindow) await createDownloadWindow(); // SOLO UNA VENTANA DE DESCARGA
+      console.timeEnd('createdownloadwindow');
 
       await new Promise(resolve => setTimeout(resolve, 1000)); // Espero un segundo para que la ventana de descarga cargue completamente
       const bws = BrowserWindow.getAllWindows();
@@ -394,11 +405,10 @@ app.on('window-all-closed', () => {
         const wc = e.webContents;
         const url = wc.getURL();
         if (url === '') { 
-          if (OS === 'mac') {
-            e.setOpacity(0);
-          } else {
+          e.setOpacity(0);
+          if (OS !== 'mac') {
             e.close();
-          };
+          }
         }; 
       });
       
