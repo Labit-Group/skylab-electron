@@ -33,6 +33,8 @@ let zoomLevel = store.get('window.zoom') || 0;
 let closeWindowTimeout = 0;
 let currentDownloadAction = '';
 let currentDownloadID = '';
+let cancelDownloadMethod = 'cancelInModalWindow';
+
 
 const MENU = [
   {
@@ -255,7 +257,7 @@ const createDownloadWindow = async () => {
   return new Promise((resolve) => { downloadWindow.webContents.on('did-finish-load', () => { setTimeout(() => resolve(), 200 ) }); });
 };
 
-const closeDownloadWindow = (now) => {
+const closeDownloadWindow = (now) => { //Creo que nunca va a ser false
   resizeDownloadWindow();
   
   // Guardo el ID del timeout en una variable para poder cancelar la eliminacion de la ventana si descargo de nuevo
@@ -273,12 +275,13 @@ ipcMain.on('openFolder', (event, arg) => {
     shell.showItemInFolder(arg.fullPath);
   }
 });
-
+/*
 ipcMain.on('retryDownload', (event, arg) => {
   currentDownloadAction = 'retry';
   currentDownloadID = arg.id;
   mainWindow.webContents.downloadURL(arg.url);
 });
+*/
 
 /*
 ipcMain.on('cancelDownload', (event, arg) => {
@@ -294,6 +297,7 @@ ipcMain.on('removeFile', (event, arg) => {
   if (arg.cancelDownload) {
     currentDownloadAction = 'cancel';
     currentDownloadID = arg.id;
+    cancelDownloadMethod = 'buttonPressed';
     mainWindow.webContents.downloadURL(arg.url);
   }
 
@@ -318,6 +322,10 @@ ipcMain.on('resizeWindow', (event, arg) => {
   };
 
   resizeDownloadWindow();
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit();
 });
 
 /* START */
@@ -356,6 +364,11 @@ ipcMain.on('resizeWindow', (event, arg) => {
     'arr': []
   };
   mainWindow.webContents.session.on('will-download', async (event, item) => {
+    // Cancelar el cierre de la ventana si se ha disparado el evento
+    if (closeWindowTimeout !== 0) {
+      clearTimeout(closeWindowTimeout);
+      closeWindowTimeout = 0;
+    }
 
     // El orden TIENE que quedarse asi, si no no funciona
     const downloadedFrom = item.getURL();
@@ -364,18 +377,15 @@ ipcMain.on('resizeWindow', (event, arg) => {
     const bytes = item.getTotalBytes();
     let id;
 
-    if (currentDownloadAction === 'cancel') {
+    if (currentDownloadAction === 'cancel') { // Cancelar la descarga cuando pulsas en la 'x' (gracias electron por facilitarme tanto la vida..., ah no)
       event.preventDefault();
       const index = items[currentDownloadID];
       items['arr'][index].cancel();
-      //downloadWindow.webContents.send('downloadCancelled', { id: currentDownloadID });
+      cancelDownloadMethod = '';
     } else {
+      cancelDownloadMethod = 'cancelInModalWindow';
+      
       if (!downloadWindow) await createDownloadWindow(); // SOLO UNA VENTANA DE DESCARGA
-
-      if (closeWindowTimeout !== 0) {
-        clearTimeout(closeWindowTimeout);
-        closeWindowTimeout = 0;
-      }
 
       await new Promise(resolve => setTimeout(resolve, 1000)); // Espero un segundo para que la ventana de descarga cargue completamente
       const bws = BrowserWindow.getAllWindows();
@@ -434,14 +444,13 @@ ipcMain.on('resizeWindow', (event, arg) => {
         downloadWindow.webContents.send('fileDownloaded', { id: id, fullPath: downloadPath});
         console.log('completed');
       } else {
-        //downloadWindow.webContents.send('downloadCancelled', { id: id });
+        if (cancelDownloadMethod === 'cancelInModalWindow') {
+          downloadWindow.webContents.send('downloadCancelled', { id: id });
+        }
+        cancelDownloadMethod = '';
         console.log('non completed');
       }
     });
 
   });
 })();
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
