@@ -8,7 +8,7 @@ const SLACK_FILE_SERVER = "https://files.slack.com/";
 const DEBUG_URL = 'http://localhost:5000';
 const PROD_URL = 'https://skylab.labit.es';
 const OS = process.platform === "darwin" ? "mac" : process.platform === "windows" ? "win" : "linux";
-const URL = PROD_URL + "?skylab-version=" + pjson.version + "&os=" + OS;
+const URL = DEBUG_URL + "?skylab-version=" + pjson.version + "&os=" + OS;
 
 const icon = {
   "mac": path.join("assets", "icons", "mac", "icon.icns"),
@@ -347,28 +347,17 @@ app.on('window-all-closed', () => {
   });
 
   app.on('browser-window-created', (e, browserWindow) => {
-    
-    console.time('onbrowserwindowcreated');
-    const initialPosition = browserWindow.getPosition();
-    browserWindow.setSize(0, 0, false);
-    browserWindow.setPosition(-200, -200);
-    
     browserWindow.webContents.on('will-navigate', (e,url) => {
       if (url.startsWith(SLACK_FILE_SERVER) || url === undefined || url === null || url === '') {
         e.preventDefault();
         browserWindow.close();
         browserWindow.destroy();
         browserWindow = null;
-      } else {
-        browserWindow.setPosition(initialPosition[0], initialPosition[1]);
-        browserWindow.setSize(800, 600, false);
-        browserWindow.show();
       }
     });
-    console.timeEnd('onbrowserwindowcreated');
-
   });
 
+  
   let items = {
     'arr': []
   };
