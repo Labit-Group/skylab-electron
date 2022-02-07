@@ -345,18 +345,6 @@ app.on('window-all-closed', () => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
-
-  app.on('browser-window-created', (e, browserWindow) => {
-    browserWindow.webContents.on('will-navigate', (e,url) => {
-      if (url.startsWith(SLACK_FILE_SERVER) || url === undefined || url === null || url === '') {
-        e.preventDefault();
-        browserWindow.close();
-        browserWindow.destroy();
-        browserWindow = null;
-      }
-    });
-  });
-
   
   let items = {
     'arr': []
