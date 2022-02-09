@@ -79,7 +79,7 @@ jQuery(document).ready(($) => {
     el.append(contents);
     el.find("div.x").click((ev) => {
       ev.stopPropagation();
-      removeFile(id, false);
+      removeFile(id);
     });
     el.find("div.folder").click((ev) => {
       ev.stopPropagation();
@@ -112,9 +112,9 @@ jQuery(document).ready(($) => {
 
     let closeDownloadWindow = true;
     if (files.length > 0) {
-      $("#" + id).remove();
       closeDownloadWindow = false;
     }
+    $("#" + id).remove();
     ipcRenderer.send('removeFile', { id: id, closeDownloadWindow: closeDownloadWindow, cancelDownload: cancelDownload, url: file.downloadedFrom });
   
     resizeWindow();

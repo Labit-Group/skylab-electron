@@ -18,9 +18,6 @@ const icon = {
 
 const store = new Store();
 
-//const NEW_WINDOW_BROWSER_URL = '/openexternal';
-
-
 let downloadWindowProperties = {
   width: 0,
   height: 0,
@@ -29,12 +26,10 @@ let downloadWindowProperties = {
 };
 
 let mainWindow, downloadWindow;
-let zoomLevel = store.get('window.zoom') || 0; 
-let closeWindowTimeout = 0;
+let zoomLevel = store.get('window.zoom') || 0;
 let currentDownloadAction = '';
 let currentDownloadID = '';
 let cancelDownloadMethod = 'cancelInModalWindow';
-
 
 const MENU = [
   {
@@ -94,23 +89,6 @@ const MENU = [
       {
         label: 'Toggle Navigation Menu',
         accelerator: 'Shift+4',
-        click: () => {
-          mainWindow.webContents.sendInputEvent({
-            type: "keyDown",
-            modifiers: ["shift"],
-            keyCode: "4",
-          });
-          mainWindow.webContents.sendInputEvent({
-            type: "char",
-            modifiers: ["shift"],
-            keyCode: "4",
-          });
-          mainWindow.webContents.sendInputEvent({
-            type: "keyUp",
-            modifiers: ["shift"],
-            keyCode: "4",
-          });
-        }
       },
     ]
   }
@@ -123,7 +101,7 @@ const saveMainWindowProperties = () => {
   const windowProps = {
     window: {
       size: {
-        width: size[0], 
+        width: size[0],
         height: size[1]
       },
       position: {
@@ -138,58 +116,43 @@ const saveMainWindowProperties = () => {
 
 const createWindow = () => {
   let options;
-  if (store.has('window.maximized') && store.has('window.maximized') && store.has('window.maximized')) {
-    const size = store.get('window.size');
-    const position = store.get('window.position');
-
-    options = {
-      width: size.width,
-      height: size.height,
-      x: position.x,
-      y: position.y,
-      
-      show: false,
-      webPreferences: {
-        webviewTag: true,
-        nodeIntegration: true,
-        contextIsolation: false
-      },
-      icon: path.join(__dirname, icon[OS])
-    }
-  } else {
-    options = {
-      show: false,
-      webPreferences: {
-        
-        //preload: path.join(__dirname, 'preload.js'),
-        webviewTag: true, // default: false
-        //webSecurity: false, // default: true
-        nodeIntegration: true,
-        contextIsolation: false, // default: true -- Para ejecutar apis de electron y preload en otro contexto (mal)
-        
-        /* lo mas seguro
-        preload: path.join(__dirname, './preload.js'),
-        nodeIntegration: false,
-        enableRemoteModule: false,
-        contextIsolation: true,
-        sandbox: true,
-        */
-      },
-      icon: path.join(__dirname, icon[OS])
-    }
+  const size = store.get('window.size') || {width: 1000, height: 800};
+  const position = store.get('window.position') || {x: 500, y: 200};
+  options = {
+    width: size.width < 50 ? 800 : size.width,
+    height: size.height < 50 ? 800 : size.height,
+    x: position.x,
+    y: position.y,
+    
+    show: false,
+    webPreferences: {
+      //preload: path.join(__dirname, 'preload.js'),
+      webviewTag: true,
+      nodeIntegration: true,
+      contextIsolation: false // default: true -- Para ejecutar apis de electron y preload en otro contexto (mal)
+      /* lo mas seguro
+      webSecurity: false, // default: true
+      preload: path.join(__dirname, './preload.js'),
+      nodeIntegration: false,
+      enableRemoteModule: false,
+      contextIsolation: true,
+      sandbox: true,
+      */
+    },
+    icon: path.join(__dirname, icon[OS])
   }
-
   mainWindow = new BrowserWindow(options);
 
-  //mainWindow.maximize();
   mainWindow.show();
   mainWindow.loadURL(URL, {userAgent: 'SkyLab'});
 
   mainWindow.on('resized', () => {
+    resizeDownloadWindow();
     saveMainWindowProperties();
   });
   
   mainWindow.on('moved', () => {
+    resizeDownloadWindow();
     saveMainWindowProperties();
   });
   
@@ -216,11 +179,6 @@ const zoomReset = () => {
   mainWindow.webContents.setZoomLevel(0);
 };
 
-const createMenu = () => {
-  const menu = new Menu.buildFromTemplate(MENU);
-  Menu.setApplicationMenu(menu);
-};
-
 const resizeDownloadWindow = () => {
   if (downloadWindow !== null && downloadWindow !== undefined) {
     downloadWindow.setSize(downloadWindowProperties.width, downloadWindowProperties.height + 20);
@@ -239,10 +197,13 @@ const createDownloadWindow = async () => {
     useContentSize: false,
     movable: false,
     closable: false,
+    focusable: false,
     alwaysOnTop: false,
     resizable: false,
     type: 'toolbar',
     transparent: true,
+    show: true,
+    hasShadow: false,
     webPreferences: {
       devTools: false,
       nodeIntegration: true,
@@ -250,22 +211,14 @@ const createDownloadWindow = async () => {
     }
   });
 
+  downloadWindow.show();
   resizeDownloadWindow();
   downloadWindow.loadFile(path.join(__dirname, 'downloadProgress', 'downloadProgress.html'));
-  //downloadWindow.webContents.openDevTools();
-
-  return new Promise((resolve) => { downloadWindow.webContents.on('did-finish-load', () => { setTimeout(() => resolve(), 200 ) }); });
 };
 
-const closeDownloadWindow = (now) => { //Creo que nunca va a ser false
+const closeDownloadWindow = () => {
   resizeDownloadWindow();
-  
-  // Guardo el ID del timeout en una variable para poder cancelar la eliminacion de la ventana si descargo de nuevo
-  closeWindowTimeout = setTimeout(() => {
-    if (downloadWindow !== null) { 
-      downloadWindow.destroy(); downloadWindow = null; 
-    } 
-  }, now ? 0 : 5000);
+  downloadWindow.hide();
 };
 
 ipcMain.on('openFolder', (event, arg) => {
@@ -275,23 +228,6 @@ ipcMain.on('openFolder', (event, arg) => {
     shell.showItemInFolder(arg.fullPath);
   }
 });
-/*
-ipcMain.on('retryDownload', (event, arg) => {
-  currentDownloadAction = 'retry';
-  currentDownloadID = arg.id;
-  mainWindow.webContents.downloadURL(arg.url);
-});
-*/
-
-/*
-ipcMain.on('cancelDownload', (event, arg) => {
-  if (arg.id !== null && arg.id !== undefined && arg.id !== '') {
-    currentDownloadAction = 'cancel';
-    currentDownloadID = arg.id;
-    mainWindow.webContents.downloadURL(arg.url);
-  }
-});
-*/
 
 ipcMain.on('removeFile', (event, arg) => {
   if (arg.cancelDownload) {
@@ -331,43 +267,27 @@ app.on('window-all-closed', () => {
 /* START */
 
 (async () => {
-  createMenu();
+  const menu = new Menu.buildFromTemplate(MENU);
+  Menu.setApplicationMenu(menu);
 
   app.commandLine.appendSwitch('disable-http-cache');
 	await app.whenReady();
-	createWindow();
-
+	
+  createWindow();
+  createDownloadWindow();
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) createWindow(); 
   });
 
-  app.on('browser-window-created', (e, browserWindow) => {
-    const initialPosition = browserWindow.getPosition();
-    browserWindow.setSize(0, 0, false);
-    browserWindow.setPosition(-200, -200);
-    
-    browserWindow.webContents.on('will-navigate', (e,url) => {
-      if (url.startsWith(SLACK_FILE_SERVER) || url === undefined || url === null || url === '') {
-        e.preventDefault();
-        browserWindow.close();
-        browserWindow.destroy();
-        browserWindow = null;
-      } else {
-        browserWindow.setPosition(initialPosition[0], initialPosition[1]);
-        browserWindow.setSize(800, 600, false);
-        browserWindow.show();
-      }
-    });
-  });
-
+  // Esto es para poder cancelar los items
   let items = {
     'arr': []
   };
-  mainWindow.webContents.session.on('will-download', async (event, item) => {
-    // Cancelar el cierre de la ventana si se ha disparado el evento
-    if (closeWindowTimeout !== 0) {
-      clearTimeout(closeWindowTimeout);
-      closeWindowTimeout = 0;
+  mainWindow.webContents.session.on('will-download', async (event, item, webContents) => {
+    let bw = BrowserWindow.fromWebContents(webContents);
+    const url = webContents.getURL();
+    if (url === undefined || url === null || url === '') {
+      bw.hide(); bw.close(); bw.destroy(); bw = null;
     }
 
     // El orden TIENE que quedarse asi, si no no funciona
@@ -384,37 +304,17 @@ app.on('window-all-closed', () => {
       cancelDownloadMethod = '';
     } else {
       cancelDownloadMethod = 'cancelInModalWindow';
+      downloadWindow.show();
       
-      if (!downloadWindow) await createDownloadWindow(); // SOLO UNA VENTANA DE DESCARGA
-
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Espero un segundo para que la ventana de descarga cargue completamente
-      const bws = BrowserWindow.getAllWindows();
-
-      bws.forEach((e) => {
-        const wc = e.webContents;
-        const url = wc.getURL();
-        if (url === '') { 
-          if (OS === 'mac') {
-            e.setOpacity(0);
-          } else {
-            e.close();
-          };
-        }; 
+      id = Math.floor(Math.random() * 10000000);
+      downloadWindow.webContents.send('newFile', { 
+        id: id,
+        fileName: fileName,
+        extension: ext,
+        fullPath: '',
+        bytes: bytes,
+        downloadedFrom: downloadedFrom
       });
-      
-      if (currentDownloadAction === 'retry') {
-        id = currentDownloadID;
-      } else {
-        id = Math.floor(Math.random() * 10000000);
-        downloadWindow.webContents.send('newFile', { 
-          id: id,
-          fileName: fileName,
-          extension: ext,
-          fullPath: '',
-          bytes: bytes,
-          downloadedFrom: downloadedFrom
-        });
-      }
 
       items[id] = items.arr.length;
       items.arr.push(item);
@@ -424,6 +324,7 @@ app.on('window-all-closed', () => {
     currentDownloadID = '';
 
     item.on('updated', (event, state) => {
+      resizeDownloadWindow();
       if (state === 'interrupted') {
         console.log(`Descarga del archivo ${fileName} interrumpida`);
       } else if (state === 'progressing') {
@@ -443,7 +344,7 @@ app.on('window-all-closed', () => {
         const downloadPath = item.getSavePath();
         downloadWindow.webContents.send('fileDownloaded', { id: id, fullPath: downloadPath});
         console.log('completed');
-      } else {
+      } else { // se hace esto para disparar la accion que cierra la ventana de descarga
         if (cancelDownloadMethod === 'cancelInModalWindow') {
           downloadWindow.webContents.send('downloadCancelled', { id: id });
         }
@@ -451,6 +352,5 @@ app.on('window-all-closed', () => {
         console.log('non completed');
       }
     });
-
   });
 })();
