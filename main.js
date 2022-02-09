@@ -8,7 +8,7 @@ const SLACK_FILE_SERVER = "https://files.slack.com/";
 const DEBUG_URL = 'http://localhost:5000';
 const PROD_URL = 'https://skylab.labit.es';
 const OS = process.platform === "darwin" ? "mac" : process.platform === "windows" ? "win" : "linux";
-const URL = PROD_URL + "?skylab-version=" + pjson.version + "&os=" + OS;
+const URL = DEBUG_URL + "?skylab-version=" + pjson.version + "&os=" + OS;
 
 const icon = {
   "mac": path.join("assets", "icons", "mac", "icon.icns"),
@@ -89,23 +89,6 @@ const MENU = [
       {
         label: 'Toggle Navigation Menu',
         accelerator: 'Shift+4',
-        click: () => {
-          mainWindow.webContents.sendInputEvent({
-            type: "keyDown",
-            modifiers: ["shift"],
-            keyCode: "4",
-          });
-          mainWindow.webContents.sendInputEvent({
-            type: "char",
-            modifiers: ["shift"],
-            keyCode: "4",
-          });
-          mainWindow.webContents.sendInputEvent({
-            type: "keyUp",
-            modifiers: ["shift"],
-            keyCode: "4",
-          });
-        }
       },
     ]
   }
