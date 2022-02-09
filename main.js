@@ -1,8 +1,11 @@
 const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron')
+const Store = require('electron-store');
 const path = require('path');
 const pjson = require("./package.json");
 
-//const DEBUG_URL = 'http://localhost:5000';
+const SLACK_FILE_SERVER = "https://files.slack.com/";
+
+const DEBUG_URL = 'http://localhost:5000';
 const PROD_URL = 'https://skylab.labit.es';
 const OS = process.platform === "darwin" ? "mac" : process.platform === "windows" ? "win" : "linux";
 const URL = PROD_URL + "?skylab-version=" + pjson.version + "&os=" + OS;
@@ -13,7 +16,20 @@ const icon = {
   "win": path.join("assets", "icons", "win", "icon.ico")
 }
 
-const NEW_WINDOW_BROWSER_URL = '/openexternal';
+const store = new Store();
+
+let downloadWindowProperties = {
+  width: 0,
+  height: 0,
+  x: 0,
+  y: 0
+};
+
+let mainWindow, downloadWindow;
+let zoomLevel = store.get('window.zoom') || 0;
+let currentDownloadAction = '';
+let currentDownloadID = '';
+let cancelDownloadMethod = 'cancelInModalWindow';
 
 const MENU = [
   {
@@ -73,52 +89,49 @@ const MENU = [
       {
         label: 'Toggle Navigation Menu',
         accelerator: 'Shift+4',
-        click: () => {
-          mainWindow.webContents.sendInputEvent({
-            type: "keyDown",
-            modifiers: ["shift"],
-            keyCode: "4",
-          });
-          mainWindow.webContents.sendInputEvent({
-            type: "char",
-            modifiers: ["shift"],
-            keyCode: "4",
-          });
-          mainWindow.webContents.sendInputEvent({
-            type: "keyUp",
-            modifiers: ["shift"],
-            keyCode: "4",
-          });
-        }
       },
     ]
   }
 ];
 
-let downloadWindowProperties = {
-  width: 0,
-  height: 0,
-  x: 0,
-  y: 0
+const saveMainWindowProperties = () => {
+  const size = mainWindow.getSize();
+  const position = mainWindow.getPosition();
+  const maximized = mainWindow.isMaximized();
+  const windowProps = {
+    window: {
+      size: {
+        width: size[0],
+        height: size[1]
+      },
+      position: {
+        x: position[0],
+        y: position[1]
+      },
+      maximized: maximized
+    }
+  }
+  store.set(windowProps);
 };
 
-let mainWindow, downloadWindow;
-let zoomLevel = 0, closeWindowTimeout = 0;
-let currentDownloadAction = '';
-let currentDownloadID = '';
-
 const createWindow = () => {
-  mainWindow = new BrowserWindow({
+  let options;
+  const size = store.get('window.size') || {width: 1000, height: 800};
+  const position = store.get('window.position') || {x: 500, y: 200};
+  options = {
+    width: size.width < 50 ? 800 : size.width,
+    height: size.height < 50 ? 800 : size.height,
+    x: position.x,
+    y: position.y,
+    
     show: false,
     webPreferences: {
-      
-      preload: path.join(__dirname, 'preload.js'),
-      webviewTag: true, // default: false
-      //webSecurity: false, // default: true
+      //preload: path.join(__dirname, 'preload.js'),
+      webviewTag: true,
       nodeIntegration: true,
-      contextIsolation: false, // default: true -- Para ejecutar apis de electron y preload en otro contexto (mal)
-      
+      contextIsolation: false // default: true -- Para ejecutar apis de electron y preload en otro contexto (mal)
       /* lo mas seguro
+      webSecurity: false, // default: true
       preload: path.join(__dirname, './preload.js'),
       nodeIntegration: false,
       enableRemoteModule: false,
@@ -127,21 +140,36 @@ const createWindow = () => {
       */
     },
     icon: path.join(__dirname, icon[OS])
-  });
-  mainWindow.maximize();
+  }
+  mainWindow = new BrowserWindow(options);
+
   mainWindow.show();
-  
   mainWindow.loadURL(URL, {userAgent: 'SkyLab'});
+
+  mainWindow.on('resized', () => {
+    resizeDownloadWindow();
+    saveMainWindowProperties();
+  });
+  
+  mainWindow.on('moved', () => {
+    resizeDownloadWindow();
+    saveMainWindowProperties();
+  });
+  
+  mainWindow.on('close', () => {
+    saveMainWindowProperties();
+    store.set('window.zoom', zoomLevel);
+  });
 };
 
 const zoomIn = () => {
-  zoomLevel += 0.025;
+  zoomLevel += 0.050;
   if (zoomLevel > 3) zoomLevel = 3;
   mainWindow.webContents.setZoomLevel(zoomLevel);
 };
 
 const zoomOut = () => {
-  zoomLevel -= 0.025;
+  zoomLevel -= 0.050;
   if (zoomLevel < -3) zoomLevel = -3;
   mainWindow.webContents.setZoomLevel(zoomLevel);
 };
@@ -151,15 +179,12 @@ const zoomReset = () => {
   mainWindow.webContents.setZoomLevel(0);
 };
 
-const createMenu = () => {
-  const menu = new Menu.buildFromTemplate(MENU);
-  Menu.setApplicationMenu(menu);
-};
-
 const resizeDownloadWindow = () => {
-  downloadWindow.setSize(downloadWindowProperties.width, downloadWindowProperties.height + 20);
-  downloadWindow.setMaximumSize(downloadWindowProperties.width, downloadWindowProperties.height + 20);
-  downloadWindow.setPosition(downloadWindowProperties.x - 4, downloadWindowProperties.y - 4);
+  if (downloadWindow !== null && downloadWindow !== undefined) {
+    downloadWindow.setSize(downloadWindowProperties.width, downloadWindowProperties.height + 20);
+    downloadWindow.setMaximumSize(downloadWindowProperties.width, downloadWindowProperties.height + 20);
+    downloadWindow.setPosition(downloadWindowProperties.x - 4, downloadWindowProperties.y - 4);
+  }
 };
 
 const createDownloadWindow = async () => {
@@ -172,10 +197,13 @@ const createDownloadWindow = async () => {
     useContentSize: false,
     movable: false,
     closable: false,
+    focusable: false,
     alwaysOnTop: false,
     resizable: false,
     type: 'toolbar',
     transparent: true,
+    show: true,
+    hasShadow: false,
     webPreferences: {
       devTools: false,
       nodeIntegration: true,
@@ -183,45 +211,36 @@ const createDownloadWindow = async () => {
     }
   });
 
+  downloadWindow.show();
   resizeDownloadWindow();
   downloadWindow.loadFile(path.join(__dirname, 'downloadProgress', 'downloadProgress.html'));
-  //downloadWindow.webContents.openDevTools();
-
-  return new Promise((resolve) => { downloadWindow.webContents.on('did-finish-load', () => { setTimeout(() => resolve(), 500 ) }); });
 };
 
-ipcMain.on('closeDownloadWindow', (event, args) => {
+const closeDownloadWindow = () => {
   resizeDownloadWindow();
-  if (args === 0) closeWindowTimeout = setTimeout(() => { 
-    if (downloadWindow !== null) { 
-      downloadWindow.destroy(); downloadWindow = null; 
-    } 
-  }, 5000);
-});
+  downloadWindow.hide();
+};
 
-ipcMain.on('openFile', (event, arg) => {
+ipcMain.on('openFolder', (event, arg) => {
   if (arg.fullPath === '') {
-    open(app.getPath('downloads'));
+    shell.showItemInFolder(app.getPath('downloads'));
   } else {
-    open(arg.fullPath);
+    shell.showItemInFolder(arg.fullPath);
   }
 });
 
-ipcMain.on('retryDownload', (event, arg) => {
-  currentDownloadAction = 'retry';
-  currentDownloadID = arg.id;
-  mainWindow.webContents.downloadURL(arg.url);
-});
-
-/*
-ipcMain.on('cancelDownload', (event, arg) => {
-  if (arg.id !== null && arg.id !== undefined && arg.id !== '') {
+ipcMain.on('removeFile', (event, arg) => {
+  if (arg.cancelDownload) {
     currentDownloadAction = 'cancel';
     currentDownloadID = arg.id;
+    cancelDownloadMethod = 'buttonPressed';
     mainWindow.webContents.downloadURL(arg.url);
   }
+
+  if (arg.closeDownloadWindow) {
+    closeDownloadWindow(true);
+  }
 });
-*/
 
 ipcMain.on('resizeWindow', (event, arg) => {
   const w = arg.width;
@@ -241,78 +260,71 @@ ipcMain.on('resizeWindow', (event, arg) => {
   resizeDownloadWindow();
 });
 
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit();
+});
+
 /* START */
 
 (async () => {
-  createMenu();
+  const menu = new Menu.buildFromTemplate(MENU);
+  Menu.setApplicationMenu(menu);
 
   app.commandLine.appendSwitch('disable-http-cache');
 	await app.whenReady();
-	createWindow();
-
+	
+  createWindow();
+  createDownloadWindow();
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) createWindow(); 
   });
 
-  app.on('browser-window-created', (e, window) => {
-    window.setMenu(null);
-
-    window.webContents.on('new-window', (e, url) => {
-      if (url.includes(NEW_WINDOW_BROWSER_URL + '/#/')) {
-        e.preventDefault();
-        const tokens = url.split('/#/');
-        if (tokens.length > 1) {
-          shell.openExternal(tokens[1]);
-        }
-      }
-    });
-  });
-
-  mainWindow.webContents.session.on('will-download', async (event, item) => {
-
-    if (!downloadWindow) await createDownloadWindow(); // SOLO UNA VENTANA DE DESCARGA
-
-    if (closeWindowTimeout !== 0) {
-      clearTimeout(closeWindowTimeout);
-      closeWindowTimeout = 0;
+  // Esto es para poder cancelar los items
+  let items = {
+    'arr': []
+  };
+  mainWindow.webContents.session.on('will-download', async (event, item, webContents) => {
+    let bw = BrowserWindow.fromWebContents(webContents);
+    const url = webContents.getURL();
+    if (url === undefined || url === null || url === '') {
+      bw.hide(); bw.close(); bw.destroy(); bw = null;
     }
 
-    let fileName = item.getFilename();
-    const ext = path.extname(fileName).replace(/\./g, '').toUpperCase(); // Posiblemente quitar
-    const bytes = item.getTotalBytes();
-    const realPath = item.getSavePath();
+    // El orden TIENE que quedarse asi, si no no funciona
     const downloadedFrom = item.getURL();
-    //const basePath = app.getPath("downloads") + "/";
-
-    //currentDownloadAction
-    //currentDownloadID
+    let fileName = item.getFilename();
+    const ext = path.extname(fileName).replace(/\./g, '').toUpperCase(); 
+    const bytes = item.getTotalBytes();
     let id;
-    
-    switch(currentDownloadAction) {
-      case 'retry':
-        id = currentDownloadID;
-        break;
-    //case 'cancel':
-    //  id = currentDownloadID;
-    //  item.cancel();
-    //  downloadWindow.webContents.send('downloadCancelled', { id: id });
-    //  break;
-      default:
-        id = Math.floor(Math.random() * 10000000);
-        downloadWindow.webContents.send('newFile', { 
-          id: id,
-          fileName: fileName,
-          extension: ext,
-          fullPath: realPath,
-          bytes: bytes,
-          downloadedFrom: downloadedFrom
-        });
+
+    if (currentDownloadAction === 'cancel') { // Cancelar la descarga cuando pulsas en la 'x' (gracias electron por facilitarme tanto la vida..., ah no)
+      event.preventDefault();
+      const index = items[currentDownloadID];
+      items['arr'][index].cancel();
+      cancelDownloadMethod = '';
+    } else {
+      cancelDownloadMethod = 'cancelInModalWindow';
+      downloadWindow.show();
+      
+      id = Math.floor(Math.random() * 10000000);
+      downloadWindow.webContents.send('newFile', { 
+        id: id,
+        fileName: fileName,
+        extension: ext,
+        fullPath: '',
+        bytes: bytes,
+        downloadedFrom: downloadedFrom
+      });
+
+      items[id] = items.arr.length;
+      items.arr.push(item);
     }
-    
+
     currentDownloadAction = '';
     currentDownloadID = '';
 
     item.on('updated', (event, state) => {
+      resizeDownloadWindow();
       if (state === 'interrupted') {
         console.log(`Descarga del archivo ${fileName} interrumpida`);
       } else if (state === 'progressing') {
@@ -320,25 +332,25 @@ ipcMain.on('resizeWindow', (event, arg) => {
           console.log(`Descarga del archivo ${fileName} pausada`);
         } else {
           const perc = (item.getReceivedBytes() / bytes) * 100;
-          downloadWindow.webContents.send('downloadingFile', { id: id, perc: perc }); // ERROR (dowloadWindow es null)
+          if (downloadWindow !== null && downloadWindow !== undefined && item.getSavePath() !== '') {
+            downloadWindow.webContents.send('downloadingFile', { id: id, perc: perc });
+          }
         }
       }
     });
 
     item.once('done', (event, state) => {
       if (state === 'completed') {
-        downloadWindow.webContents.send('fileDownloaded', { id: id });
+        const downloadPath = item.getSavePath();
+        downloadWindow.webContents.send('fileDownloaded', { id: id, fullPath: downloadPath});
         console.log('completed');
-      } else {
-        downloadWindow.webContents.send('downloadCancelled', { id: id });
+      } else { // se hace esto para disparar la accion que cierra la ventana de descarga
+        if (cancelDownloadMethod === 'cancelInModalWindow') {
+          downloadWindow.webContents.send('downloadCancelled', { id: id });
+        }
+        cancelDownloadMethod = '';
         console.log('non completed');
       }
     });
-
   });
 })();
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-  //progressInterval.forEach((e) => clearInterval(e));
-});

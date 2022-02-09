@@ -5,13 +5,16 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "package-mac": "electron-packager . --overwrite --platform=darwin --arch=x64 --icon=assets/icons/mac/skylab.icns --prune=true --out=release-builds",
-    "package-win": "electron-packager . SkyLab --overwrite --asar --platform=win32 --arch=ia32 --icon=assets/icons/win/skylab.ico --prune=true --out=release-builds --appCopyright=\"Labit\" --version-string.FileDescription=CE --version-string.ProductName=\"SkyLab\"",
-    "package-linux": "electron-packager . SkyLab --overwrite --asar --platform=linux --arch=x64 --icon=assets/icons/png/skylab.svg --prune=true --out=release-builds"
+    "package-mac": "electron-packager . --overwrite --platform=darwin --arch=x64 --icon=assets/icons/mac/icon.icns --prune=true --out=release-builds",
+    "package-win": "electron-packager . SkyLab --overwrite --asar --platform=win32 --arch=ia32 --icon=assets/icons/win/icon.ico --prune=true --out=release-builds --appCopyright=\"Labit\" --version-string.FileDescription=CE --version-string.ProductName=\"SkyLab\"",
+    "package-linux": "electron-packager . SkyLab --overwrite --asar --platform=linux --arch=x64 --icon=assets/icons/png/icon.svg --prune=true --out=release-builds"
   },
   "author": "Carlos Abad Solís",
   "devDependencies": {
     "electron": "^13.6.7",
     "electron-packager": "^15.4.0"
+  },
+  "dependencies": {
+    "electron-store": "^8.0.1"
   }
 }
