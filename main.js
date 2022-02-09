@@ -211,7 +211,7 @@ const createDownloadWindow = async () => {
     }
   });
 
-  downloadWindow.show();
+  downloadWindow.hide();
   resizeDownloadWindow();
   downloadWindow.loadFile(path.join(__dirname, 'downloadProgress', 'downloadProgress.html'));
 };
