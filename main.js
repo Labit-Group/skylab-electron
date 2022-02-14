@@ -1,5 +1,6 @@
-const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron')
+const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
 const Store = require('electron-store');
+const contextMenu = require('electron-context-menu');
 const path = require('path');
 const pjson = require("./package.json");
 
@@ -8,7 +9,7 @@ const SLACK_FILE_SERVER = "https://files.slack.com/";
 const DEBUG_URL = 'http://localhost:5000';
 const PROD_URL = 'https://skylab.labit.es';
 const OS = process.platform === "darwin" ? "mac" : process.platform === "windows" ? "win" : "linux";
-const URL = PROD_URL + "?skylab-version=" + pjson.version + "&os=" + OS;
+const URL = DEBUG_URL + "?skylab-version=" + pjson.version + "&os=" + OS;
 
 const icon = {
   "mac": path.join("assets", "icons", "mac", "icon.icns"),
@@ -258,6 +259,33 @@ ipcMain.on('resizeWindow', (event, arg) => {
   };
 
   resizeDownloadWindow();
+});
+
+app.on("browser-window-created", function (e, window) {
+  contextMenu({ showInspectElement: false });
+});
+
+app.on("web-contents-created", (e, contents) => {
+  if (contents.getType() == "webview") {
+    contextMenu({
+      prepend: (defaultActions, params, browserWindow) => [
+        {
+          label: "Open in default browser",
+          // Only show it when right-clicking links
+          visible: params.linkURL.trim().length > 0,
+          click: () => {
+            shell.openExternal(params.linkURL);
+          },
+        },
+      ],
+      window: {
+        webContents: contents,
+        inspectElement: contents.inspectElement.bind(contents)
+      },
+      showSaveImageAs: true,
+      showInspectElement: false,
+    });
+  }
 });
 
 app.on('window-all-closed', () => {
