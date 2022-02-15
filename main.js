@@ -9,7 +9,7 @@ const SLACK_FILE_SERVER = "https://files.slack.com/";
 const DEBUG_URL = 'http://localhost:5000';
 const PROD_URL = 'https://skylab.labit.es';
 const OS = process.platform === "darwin" ? "mac" : process.platform === "windows" ? "win" : "linux";
-const URL = DEBUG_URL + "?skylab-version=" + pjson.version + "&os=" + OS;
+const URL = PROD_URL + "?skylab-version=" + pjson.bundleVersion + "&os=" + OS;
 
 const icon = {
   "mac": path.join("assets", "icons", "mac", "icon.icns"),
