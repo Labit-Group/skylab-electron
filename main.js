@@ -261,12 +261,27 @@ ipcMain.on('resizeWindow', (event, arg) => {
   resizeDownloadWindow();
 });
 
-app.on("browser-window-created", function (e, window) {
+/**
+ * Evita que se generen ventanas nuevas si se hace click en un enlace que intenta abrir una pestaña nueva.
+ * Además, permite abrir más instancias de skylab.
+ */
+app.on('browser-window-created', function (e, bw) {
+  const wc = bw.webContents;
+  wc.setWindowOpenHandler((details) => {
+    const url = details.url;
+    if (!url.startsWith('https://skylab.labit.es') && !url.startsWith('http://localhost')) {
+      wc.loadURL(url);
+      return { action: 'deny' };
+    } else {
+      return { action: 'allow' };
+    }
+  });
   contextMenu({ showInspectElement: false });
 });
 
-app.on("web-contents-created", (e, contents) => {
-  if (contents.getType() == "webview") {
+app.on('web-contents-created', (e, webContents) => {
+  //console.log("Web Content creado.");
+  if (webContents.getType() == "webview") {
     contextMenu({
       prepend: (defaultActions, params, browserWindow) => [
         {
@@ -279,8 +294,8 @@ app.on("web-contents-created", (e, contents) => {
         },
       ],
       window: {
-        webContents: contents,
-        inspectElement: contents.inspectElement.bind(contents)
+        webContents: webContents,
+        inspectElement: webContents.inspectElement.bind(webContents)
       },
       showSaveImageAs: true,
       showInspectElement: false,
