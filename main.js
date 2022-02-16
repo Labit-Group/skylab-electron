@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain, clipboard } = require('electron');
 const Store = require('electron-store');
 const contextMenu = require('electron-context-menu');
 const path = require('path');
@@ -9,7 +9,7 @@ const SLACK_FILE_SERVER = "https://files.slack.com/";
 const DEBUG_URL = 'http://localhost:5000';
 const PROD_URL = 'https://skylab.labit.es';
 const OS = process.platform === "darwin" ? "mac" : process.platform === "windows" ? "win" : "linux";
-const URL = PROD_URL + "?skylab-version=" + pjson.bundleVersion + "&os=" + OS;
+const URL = DEBUG_URL + "?skylab-version=" + pjson.bundleVersion + "&os=" + OS;
 
 const icon = {
   "mac": path.join("assets", "icons", "mac", "icon.icns"),
@@ -265,42 +265,42 @@ ipcMain.on('resizeWindow', (event, arg) => {
  * Evita que se generen ventanas nuevas si se hace click en un enlace que intenta abrir una pestaña nueva.
  * Además, permite abrir más instancias de skylab.
  */
-app.on('browser-window-created', function (e, bw) {
+app.on('browser-window-created', (e, bw) => {
   const wc = bw.webContents;
   wc.setWindowOpenHandler((details) => {
     const url = details.url;
-    if (!url.startsWith('https://skylab.labit.es') && !url.startsWith('http://localhost')) {
+    if (!url.startsWith('https://skylab.labit.es') && !url.startsWith('http://localhost') && !url.startsWith('https://login.microsoftonline.com')) {
       wc.loadURL(url);
       return { action: 'deny' };
     } else {
       return { action: 'allow' };
     }
   });
-  contextMenu({ showInspectElement: false });
 });
 
 app.on('web-contents-created', (e, webContents) => {
-  //console.log("Web Content creado.");
-  if (webContents.getType() == "webview") {
-    contextMenu({
-      prepend: (defaultActions, params, browserWindow) => [
-        {
-          label: "Open in default browser",
-          // Only show it when right-clicking links
-          visible: params.linkURL.trim().length > 0,
-          click: () => {
-            shell.openExternal(params.linkURL);
-          },
+  contextMenu({
+    prepend: (defaultActions, params, browserWindow) => [
+      {
+        label: "Open in default browser",
+        // Only show it when right-clicking links
+        visible: params.linkURL.trim().length > 0,
+        click: () => {
+          shell.openExternal(params.linkURL.trim());
         },
-      ],
-      window: {
-        webContents: webContents,
-        inspectElement: webContents.inspectElement.bind(webContents)
       },
-      showSaveImageAs: true,
-      showInspectElement: false,
-    });
-  }
+      {
+        label: "Copy URL in Clipboard",
+        click: () => {
+          clipboard.writeText(browserWindow.webContents.getURL().trim());
+        },
+      },
+    ],
+    
+    window: webContents,
+    showSaveImageAs: true,
+    showInspectElement: false
+  });
 });
 
 app.on('window-all-closed', () => {
