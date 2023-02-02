@@ -12,11 +12,11 @@
   },
   "author": "Carlos Abad Solís",
   "devDependencies": {
-    "electron": "^13.6.7",
-    "electron-packager": "^15.4.0"
+    "electron": "^22.2.0",
+    "electron-packager": "^17.1.1"
   },
   "dependencies": {
-    "electron-context-menu": "^3.1.2",
-    "electron-store": "^8.0.1"
+    "electron-context-menu": "^3.6.1",
+    "electron-store": "^8.1.0"
   }
 }
