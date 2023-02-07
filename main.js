@@ -4,9 +4,9 @@ const contextMenu = require('electron-context-menu');
 const path = require('path');
 const pjson = require("./package.json");
 
-const SLACK_FILE_SERVER = "https://files.slack.com/";
+// const SLACK_FILE_SERVER = "https://files.slack.com/";
 
-const DEBUG_URL = 'http://localhost:5000';
+const DEBUG_URL = 'http://localhost:5000/skylab-main';
 const PROD_URL = 'https://skylab.labit.es';
 const OS = process.platform === "darwin" ? "mac" : process.platform === "windows" ? "win" : "linux";
 const URL = DEBUG_URL + "?skylab-version=" + pjson.bundleVersion + "&os=" + OS;
