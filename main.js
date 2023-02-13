@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell, ipcMain, clipboard } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
 const Store = require('electron-store');
 const contextMenu = require('electron-context-menu');
 const path = require('path');
@@ -95,6 +95,31 @@ const MENU = [
   }
 ];
 
+contextMenu({/* 
+  prepend: (defaultActions, params, browserWindow) => [
+    {
+      label: "Open in default browser",
+      // Only show it when right-clicking links
+      visible: params.linkURL.trim().length > 0,
+      click: () => {
+        shell.openExternal(params.linkURL.trim());
+      },
+    },
+    {
+      label: "Copy URL in Clipboard",
+      click: () => {
+        console.log({url: webContents.getURL(), u2: params.linkURL})
+        clipboard.writeText(webContents.getURL().trim());
+      },
+    },
+  ], */
+  
+  
+  showSaveImageAs: true,
+  showInspectElement: false,
+  showCopyLink: true
+});
+
 const saveMainWindowProperties = () => {
   const size = mainWindow.getSize();
   const position = mainWindow.getPosition();
@@ -116,10 +141,9 @@ const saveMainWindowProperties = () => {
 };
 
 const createWindow = () => {
-  let options;
   const size = store.get('window.size') || {width: 1000, height: 800};
   const position = store.get('window.position') || {x: 500, y: 200};
-  options = {
+  const options = {
     width: size.width < 50 ? 800 : size.width,
     height: size.height < 50 ? 800 : size.height,
     x: position.x,
@@ -129,7 +153,7 @@ const createWindow = () => {
     webPreferences: {
       //preload: path.join(__dirname, 'preload.js'),
       webviewTag: true,
-      nodeIntegration: true,
+      nodeIntegration: false,
       contextIsolation: false // default: true -- Para ejecutar apis de electron y preload en otro contexto (mal)
       /* lo mas seguro
       webSecurity: false, // default: true
@@ -265,6 +289,7 @@ ipcMain.on('resizeWindow', (event, arg) => {
  * Evita que se generen ventanas nuevas si se hace click en un enlace que intenta abrir una pestaña nueva.
  * Además, permite abrir más instancias de skylab.
  */
+
 app.on('browser-window-created', (e, bw) => {
   const wc = bw.webContents;
   wc.setWindowOpenHandler((details) => {
@@ -272,36 +297,33 @@ app.on('browser-window-created', (e, bw) => {
     if (!url.startsWith('https://skylab.labit.es') && !url.startsWith('http://localhost') && !url.startsWith('https://login.microsoftonline.com')) {
       wc.loadURL(url);
       return { action: 'deny' };
+    }
+    const b = new BrowserWindow({ parent: mainWindow });
+    b.show();
+    b.loadURL(url);
+    return { action: 'allow' };
+  });
+});
+
+/*
+
+app.on('browser-window-created', (e, bw) => {
+  console.log("Tengo sueño")
+  const wc = bw.webContents;
+  wc.setWindowOpenHandler((details) => {
+    const url = details.url;
+    if (!url.startsWith('https://skylab.labit.es') && !url.startsWith('http://localhost') && !url.startsWith('https://login.microsoftonline.com')) {
+      wc.loadURL(url);
+      return { action: 'deny' };
     } else {
+      // const b = new BrowserWindow();
+      // b.show();
+      // b.loadURL(url);
       return { action: 'allow' };
     }
   });
 });
-
-app.on('web-contents-created', (e, webContents) => {
-  contextMenu({
-    prepend: (defaultActions, params, browserWindow) => [
-      {
-        label: "Open in default browser",
-        // Only show it when right-clicking links
-        visible: params.linkURL.trim().length > 0,
-        click: () => {
-          shell.openExternal(params.linkURL.trim());
-        },
-      },
-      {
-        label: "Copy URL in Clipboard",
-        click: () => {
-          clipboard.writeText(browserWindow.webContents.getURL().trim());
-        },
-      },
-    ],
-    
-    window: webContents,
-    showSaveImageAs: true,
-    showInspectElement: false
-  });
-});
+*/
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
