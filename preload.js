@@ -20,3 +20,7 @@ process.once('loaded', () => {
   });
 });
 */
+
+const { contextBridge, shell } = require("electron");
+
+contextBridge.exposeInMainWorld("electron", { shell });
