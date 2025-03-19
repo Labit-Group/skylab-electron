@@ -154,7 +154,7 @@ const createWindow = () => {
       preload: path.join(__dirname, 'preload.js'),
       webviewTag: true,
       nodeIntegration: true,
-      contextIsolation: false
+      contextIsolation: true
      // default: true -- Para ejecutar apis de electron y preload en otro contexto (mal)
       /* lo mas seguro
       webSecurity: false, // default: true
@@ -233,7 +233,7 @@ const createDownloadWindow = async () => {
     webPreferences: {
       devTools: false,
       nodeIntegration: true,
-      contextIsolation: false,
+      contextIsolation: true,
     }
   });
 
