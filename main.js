@@ -6,10 +6,19 @@ const pjson = require("./package.json");
 
 // const SLACK_FILE_SERVER = "https://files.slack.com/";
 
+// Detecta si la app está en modo desarrollo o producción
+const isDev = !app.isPackaged;
+
+// URL base según el entorno
 const DEBUG_URL = 'http://localhost:5000/skylab-main';
 const PROD_URL = 'https://skylab.labit.es';
-const OS = process.platform === "darwin" ? "mac" : process.platform === "windows" ? "win" : "linux";
-const URL = DEBUG_URL + "?skylab-version=" + pjson.bundleVersion + "&os=" + OS;
+
+// Detecta el sistema operativo actual
+const OS = process.platform === "darwin" ? "mac" : process.platform === "win32" ? "win" : "linux";
+
+// Construye la URL final que se cargará en la ventana principal
+// Incluye versión del bundle y sistema operativo como parámetros
+const URL = (isDev ? DEBUG_URL : PROD_URL) + "?skylab-version=" + pjson.bundleVersion + "&os=" + OS;
 
 const icon = {
   "mac": path.join("assets", "icons", "mac", "icon.icns"),
