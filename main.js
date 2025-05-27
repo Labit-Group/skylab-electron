@@ -269,13 +269,18 @@ ipcMain.on('removeFile', (event, arg) => {
 });
 
 ipcMain.on('resizeWindow', (event, arg) => {
+  if (!downloadWindow) {
+    console.warn("⚠️ resizeWindow ignorado: downloadWindow aún no existe");
+    return;
+  }
+
   const w = arg.width;
   const h = arg.height;
   const mainWindowPosition = mainWindow.getPosition();
   const mainWindowSize = mainWindow.getSize();
   const x = mainWindowPosition[0] + mainWindowSize[0] - w - 1;
   const y = mainWindowPosition[1] + mainWindowSize[1] - h - 1;
-  
+
   downloadWindowProperties = {
     width: w,
     height: h,

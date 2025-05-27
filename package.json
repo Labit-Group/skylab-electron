@@ -1,19 +1,47 @@
 {
   "name": "skylab",
   "version": "0.1.1",
-  "description": "Skylab by Carlos Abad Solis",
+  "description": "Skylab by Francisco Ortega Iglesias",
   "main": "main.js",
+  "author": "Francisco Ortega Iglesias",
   "bundleVersion": "1",
   "scripts": {
     "start": "electron .",
-    "package-mac": "electron-packager . --overwrite --platform=darwin --arch=x64 --icon=assets/icons/mac/icon.icns --prune=true --out=release-builds",
-    "package-win": "electron-packager . SkyLab --overwrite --asar --platform=win32 --arch=ia32 --icon=assets/icons/win/icon.ico --prune=true --out=release-builds --appCopyright=\"Labit\" --version-string.FileDescription=CE --version-string.ProductName=\"SkyLab\"",
-    "package-linux": "electron-packager . SkyLab --overwrite --asar --platform=linux --arch=x64 --icon=assets/icons/png/icon.svg --prune=true --out=release-builds"
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux"
   },
-  "author": "Carlos Abad Solís",
+  "build": {
+    "appId": "com.labit.skylab",
+    "productName": "SkyLab",
+    "copyright": "Labit",
+    "files": [
+      "**/*"
+    ],
+    "directories": {
+      "output": "release-builds"
+    },
+    "win": {
+      "icon": "assets/icons/win/icon.ico",
+      "target": ["nsis"]
+    },
+    "mac": {
+      "icon": "assets/icons/mac/icon.icns"
+    },
+    "linux": {
+      "icon": "assets/icons/png/icon.svg",
+      "target": ["AppImage"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
   "devDependencies": {
     "electron": "^23.0.0",
-    "electron-packager": "^17.1.1"
+    "electron-builder": "^24.13.1"
   },
   "dependencies": {
     "electron-context-menu": "^3.6.1",
