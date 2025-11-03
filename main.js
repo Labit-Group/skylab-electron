@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain, session } = require('electron');
 const Store = require('electron-store');
 const contextMenu = require('electron-context-menu');
 const path = require('path');
@@ -179,7 +179,7 @@ const createWindow = () => {
   mainWindow = new BrowserWindow(options);
 
   mainWindow.show();
-  mainWindow.loadURL(URL, {userAgent: 'SkyLab'});
+  mainWindow.loadURL(URL);
 
   mainWindow.on('resized', () => {
     resizeDownloadWindow();
@@ -352,6 +352,15 @@ app.on('window-all-closed', () => {
 
   app.commandLine.appendSwitch('disable-http-cache');
 	await app.whenReady();
+
+  // === UA REAL + " SkyLab" a nivel de sesión (para ventana y webviews) ===
+  // 1) Toma el UA real del runtime de Electron (incluye Chrome/XX real).
+  const realUA = session.defaultSession.getUserAgent();
+  // 2) Añade tu marca como sufijo (necesario para getPlatform() en tu front).
+  const brandedUA = `${realUA} SkyLab`;
+  // 3) Fija el UA global de la sesión y el fallback del proceso.
+  session.defaultSession.setUserAgent(brandedUA);
+  app.userAgentFallback = brandedUA;
 	
   createWindow();
   createDownloadWindow();

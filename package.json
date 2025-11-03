@@ -24,14 +24,18 @@
     },
     "win": {
       "icon": "assets/icons/win/icon.ico",
-      "target": ["nsis"]
+      "target": [
+        "nsis"
+      ]
     },
     "mac": {
       "icon": "assets/icons/mac/icon.icns"
     },
     "linux": {
       "icon": "assets/icons/png/icon.svg",
-      "target": ["AppImage"]
+      "target": [
+        "AppImage"
+      ]
     },
     "nsis": {
       "oneClick": false,
@@ -40,7 +44,7 @@
     }
   },
   "devDependencies": {
-    "electron": "^23.0.0",
+    "electron": "^35.7.5",
     "electron-builder": "^24.13.1"
   },
   "dependencies": {
