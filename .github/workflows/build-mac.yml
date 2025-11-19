@@ -1,225 +1,47 @@
-name: Build macOS (Multi-Architecture)
+name: Build macOS (arm64 only)
 
 on:
   push:
-    branches: [main, develop]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
   workflow_dispatch:
 
-env:
-  ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
-  ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
-
 jobs:
-  # ============================================================
-  # JOB 1: Build para macOS x64 (Intel)
-  # ============================================================
-  build-macos-x64:
-    name: Build macOS x64 (Intel)
-    runs-on: macos-13  # macOS Intel runner
-    
-    steps:
-      - name: Checkout código
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Cache Electron
-        uses: actions/cache@v4
-        with:
-          path: ${{ github.workspace }}/.cache
-          key: ${{ runner.os }}-electron-x64-${{ hashFiles('**/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-electron-x64-
-
-      - name: Instalar dependencias
-        run: npm install
-
-      - name: Build para macOS x64
-        run: npm run build:mac:x64
-        env:
-          # Deshabilitar firma automática (no tenemos certificado)
-          CSC_IDENTITY_AUTO_DISCOVERY: false
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Subir artefacto x64
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: skylab-macos-x64
-          path: |
-            release-builds/**/*
-          retention-days: 30
-
-  # ============================================================
-  # JOB 2: Build para macOS arm64 (Apple Silicon)
-  # ============================================================
-  build-macos-arm64:
+  build-arm64:
     name: Build macOS arm64 (Apple Silicon)
-    runs-on: macos-14  # macOS Apple Silicon runner (M1/M2)
+    runs-on: macos-14  # macOS con Apple Silicon
     
     steps:
-      - name: Checkout código
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package.json
 
-      - name: Cache Electron
-        uses: actions/cache@v4
-        with:
-          path: ${{ github.workspace }}/.cache
-          key: ${{ runner.os }}-electron-arm64-${{ hashFiles('**/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-electron-arm64-
-
-      - name: Instalar dependencias
+      - name: Install dependencies
         run: npm install
 
-      - name: Build para macOS arm64
-        run: npm run build:mac:arm64
+      - name: Build macOS arm64
         env:
-          # Deshabilitar firma automática (no tenemos certificado)
-          CSC_IDENTITY_AUTO_DISCOVERY: false
+          CSC_IDENTITY_AUTO_DISCOVERY: false  # Deshabilitar firma automática
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build:mac:arm64
 
-      - name: Subir artefacto arm64
+      - name: List output directory
+        run: |
+          echo "📦 Artefactos generados:"
+          ls -lh release-builds/
+          
+      - name: Upload arm64 build
         uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: skylab-macos-arm64
           path: |
-            release-builds/**/*
+            release-builds/*.dmg
+            release-builds/*.zip
           retention-days: 30
-
-  # ============================================================
-  # JOB 3: Build Universal (x64 + arm64 en un solo binario)
-  # ============================================================
-  build-macos-universal:
-    name: Build macOS Universal (x64 + arm64)
-    runs-on: macos-14  # Requiere Apple Silicon para crear universal
-    
-    steps:
-      - name: Checkout código
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Cache Electron
-        uses: actions/cache@v4
-        with:
-          path: ${{ github.workspace }}/.cache
-          key: ${{ runner.os }}-electron-universal-${{ hashFiles('**/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-electron-universal-
-
-      - name: Instalar dependencias
-        run: npm install
-
-      - name: Build Universal para macOS
-        run: npm run build:mac:universal
-        env:
-          # Deshabilitar firma automática (no tenemos certificado)
-          CSC_IDENTITY_AUTO_DISCOVERY: false
-          # ⚠️ Para habilitar firma, configura estos secrets y descomenta:
-          # CSC_LINK: ${{ secrets.MAC_CERTIFICATE_BASE64 }}
-          # CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
-          # APPLE_ID: ${{ secrets.APPLE_ID }}
-          # APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DEBUG: electron-builder
-
-      - name: Verificar arquitectura del binario
-        if: always()
-        run: |
-          echo "🔍 Verificando contenido de release-builds..."
-          ls -la release-builds/ || echo "❌ No existe release-builds/"
-          find release-builds -type f || echo "❌ No hay archivos en release-builds/"
-
-      - name: Subir artefacto Universal
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: skylab-macos-universal
-          path: |
-            release-builds/**/*
-          retention-days: 30
-
-      - name: Subir información de build
-        uses: actions/upload-artifact@v4
-        if: always()
-        continue-on-error: true
-        with:
-          name: build-info
-          path: |
-            release-builds/builder-debug.yml
-            release-builds/builder-effective-config.yaml
-          retention-days: 7
-
-  # ============================================================
-  # JOB 4: Notarización (solo si tienes credenciales Apple)
-  # ============================================================
-  # notarize:
-  #   name: Notarizar aplicación macOS
-  #   runs-on: macos-14
-  #   needs: [build-macos-universal]
-  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-  #   
-  #   steps:
-  #     - name: Checkout código
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Descargar artefacto Universal
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         name: skylab-macos-universal
-  #         path: release-builds
-  #
-  #     - name: Instalar certificado de firma
-  #       env:
-  #         MAC_CERTIFICATE_BASE64: ${{ secrets.MAC_CERTIFICATE_BASE64 }}
-  #         MAC_CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
-  #       run: |
-  #         echo "$MAC_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
-  #         security create-keychain -p actions temp.keychain
-  #         security default-keychain -s temp.keychain
-  #         security unlock-keychain -p actions temp.keychain
-  #         security import certificate.p12 -k temp.keychain -P "$MAC_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-  #         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k actions temp.keychain
-  #
-  #     - name: Firmar aplicación
-  #       run: |
-  #         codesign --deep --force --verify --verbose --sign "Developer ID Application: YOUR_TEAM_NAME" \
-  #           --options runtime --entitlements build/entitlements.mac.plist \
-  #           "release-builds/SkyLab.app"
-  #
-  #     - name: Notarizar con Apple
-  #       env:
-  #         APPLE_ID: ${{ secrets.APPLE_ID }}
-  #         APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-  #         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-  #       run: |
-  #         xcrun notarytool submit "release-builds/SkyLab.dmg" \
-  #           --apple-id "$APPLE_ID" \
-  #           --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-  #           --team-id "$APPLE_TEAM_ID" \
-  #           --wait
-  #
-  #     - name: Staple notarization ticket
-  #       run: xcrun stapler staple "release-builds/SkyLab.dmg"
-  #
-  #     - name: Subir DMG notarizado
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: skylab-macos-universal-notarized
-  #         path: release-builds/*.dmg
