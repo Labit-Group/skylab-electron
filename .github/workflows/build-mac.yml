@@ -3,9 +3,25 @@ name: Build macOS (arm64 only)
 on:
   push:
     branches: [ main ]
+    paths:
+      - '**.js'              # Archivos JavaScript
+      - '**.json'            # package.json, etc.
+      - '**.css'             # Estilos
+      - '**.html'            # HTML
+      - 'assets/**'          # Iconos, imágenes
+      - '!**/*.md'           # IGNORAR archivos Markdown
+      - '!docs/**'           # IGNORAR carpeta docs
   pull_request:
     branches: [ main ]
-  workflow_dispatch:
+    paths:
+      - '**.js'
+      - '**.json'
+      - '**.css'
+      - '**.html'
+      - 'assets/**'
+      - '!**/*.md'
+      - '!docs/**'
+  workflow_dispatch:         # Ejecución manual siempre disponible
 
 jobs:
   build-arm64:
