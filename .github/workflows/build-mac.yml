@@ -27,39 +27,32 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
       - name: Cache Electron
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.cache
-          key: ${{ runner.os }}-electron-x64-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-electron-x64-${{ hashFiles('**/package.json') }}
           restore-keys: |
             ${{ runner.os }}-electron-x64-
 
       - name: Instalar dependencias
-        run: npm ci
-
-      - name: Recompilar módulos nativos para x64
-        run: npm run rebuild:x64
+        run: npm install
 
       - name: Build para macOS x64
         run: npm run build:mac:x64
         env:
-          # Configuración para firma y notarización (opcional en este job)
-          # Si quieres firmar/notarizar aquí también, descomenta:
-          # CSC_LINK: ${{ secrets.MAC_CERTIFICATE_BASE64 }}
-          # CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
-          # APPLE_ID: ${{ secrets.APPLE_ID }}
-          # APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Deshabilitar firma automática (no tenemos certificado)
+          CSC_IDENTITY_AUTO_DISCOVERY: false
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Subir artefacto x64
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: skylab-macos-x64
-          path: release-builds/*.dmg
+          path: |
+            release-builds/**/*
           retention-days: 30
 
   # ============================================================
@@ -77,32 +70,32 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
       - name: Cache Electron
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.cache
-          key: ${{ runner.os }}-electron-arm64-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-electron-arm64-${{ hashFiles('**/package.json') }}
           restore-keys: |
             ${{ runner.os }}-electron-arm64-
 
       - name: Instalar dependencias
-        run: npm ci
-
-      - name: Recompilar módulos nativos para arm64
-        run: npm run rebuild:arm64
+        run: npm install
 
       - name: Build para macOS arm64
         run: npm run build:mac:arm64
         env:
+          # Deshabilitar firma automática (no tenemos certificado)
+          CSC_IDENTITY_AUTO_DISCOVERY: false
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Subir artefacto arm64
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: skylab-macos-arm64
-          path: release-builds/*.dmg
+          path: |
+            release-builds/**/*
           retention-days: 30
 
   # ============================================================
@@ -120,29 +113,24 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
       - name: Cache Electron
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.cache
-          key: ${{ runner.os }}-electron-universal-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-electron-universal-${{ hashFiles('**/package.json') }}
           restore-keys: |
             ${{ runner.os }}-electron-universal-
 
       - name: Instalar dependencias
-        run: npm ci
-
-      - name: Recompilar módulos nativos para ambas arquitecturas
-        run: |
-          npm run rebuild:x64
-          npm run rebuild:arm64
+        run: npm install
 
       - name: Build Universal para macOS
         run: npm run build:mac:universal
         env:
-          # ⚠️ CONFIGURACIÓN DE FIRMA Y NOTARIZACIÓN ⚠️
-          # Descomenta y configura los secrets en GitHub:
+          # Deshabilitar firma automática (no tenemos certificado)
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          # ⚠️ Para habilitar firma, configura estos secrets y descomenta:
           # CSC_LINK: ${{ secrets.MAC_CERTIFICATE_BASE64 }}
           # CSC_KEY_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
           # APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -152,28 +140,25 @@ jobs:
           DEBUG: electron-builder
 
       - name: Verificar arquitectura del binario
+        if: always()
         run: |
-          echo "🔍 Verificando arquitectura del binario Universal..."
-          APP_PATH="release-builds/mac-universal/SkyLab.app/Contents/MacOS/SkyLab"
-          if [ -f "$APP_PATH" ]; then
-            file "$APP_PATH"
-            lipo -info "$APP_PATH"
-          else
-            echo "⚠️ Binario no encontrado en $APP_PATH"
-            find release-builds -name "SkyLab" -type f
-          fi
+          echo "🔍 Verificando contenido de release-builds..."
+          ls -la release-builds/ || echo "❌ No existe release-builds/"
+          find release-builds -type f || echo "❌ No hay archivos en release-builds/"
 
       - name: Subir artefacto Universal
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: skylab-macos-universal
           path: |
-            release-builds/*.dmg
-            release-builds/*.zip
+            release-builds/**/*
           retention-days: 30
 
       - name: Subir información de build
         uses: actions/upload-artifact@v4
+        if: always()
+        continue-on-error: true
         with:
           name: build-info
           path: |

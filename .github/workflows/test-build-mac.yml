@@ -1,0 +1,65 @@
+name: Build macOS (Simple Test)
+
+on:
+  workflow_dispatch:  # Manual trigger only
+  push:
+    branches: [test, develop]
+
+jobs:
+  test-build:
+    name: Test Build macOS
+    runs-on: macos-14  # Apple Silicon runner
+    
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verificar Node y npm
+        run: |
+          echo "Node version: $(node --version)"
+          echo "npm version: $(npm --version)"
+          echo "Arquitectura: $(uname -m)"
+
+      - name: Instalar dependencias
+        run: |
+          npm install
+          echo "✅ Dependencias instaladas"
+
+      - name: Listar scripts disponibles
+        run: |
+          echo "Scripts en package.json:"
+          cat package.json | grep -A 20 '"scripts"'
+
+      - name: Intentar build arm64 (simple)
+        run: |
+          echo "🔨 Iniciando build para arm64..."
+          npm run build:mac:arm64
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEBUG: electron-builder
+
+      - name: Verificar archivos generados
+        if: always()
+        run: |
+          echo "📂 Contenido de release-builds:"
+          ls -laR release-builds/ || echo "❌ No existe release-builds/"
+          
+          echo ""
+          echo "🔍 Buscando archivos .app, .dmg, .zip:"
+          find . -name "*.app" -o -name "*.dmg" -o -name "*.zip" || echo "No encontrados"
+
+      - name: Subir todos los archivos generados
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-build-output
+          path: |
+            release-builds/
+            *.log
+          retention-days: 7
