@@ -10,7 +10,13 @@
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
-    "dist:linux": "electron-builder --linux"
+    "dist:linux": "electron-builder --linux",
+    "build:mac:x64": "electron-builder --mac --x64",
+    "build:mac:arm64": "electron-builder --mac --arm64",
+    "build:mac:universal": "electron-builder --mac --universal",
+    "rebuild:x64": "electron-rebuild --arch=x64",
+    "rebuild:arm64": "electron-rebuild --arch=arm64",
+    "postinstall": "electron-builder install-app-deps"
   },
   "build": {
     "appId": "com.labit.skylab",
@@ -29,7 +35,22 @@
       ]
     },
     "mac": {
-      "icon": "assets/icons/mac/icon.icns"
+      "icon": "assets/icons/mac/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["universal"]
+        },
+        {
+          "target": "zip",
+          "arch": ["universal"]
+        }
+      ],
+      "category": "public.app-category.developer-tools",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
     },
     "linux": {
       "icon": "assets/icons/png/icon.svg",
@@ -45,7 +66,8 @@
   },
   "devDependencies": {
     "electron": "^35.7.5",
-    "electron-builder": "^24.13.1"
+    "electron-builder": "^24.13.1",
+    "electron-rebuild": "^3.2.9"
   },
   "dependencies": {
     "electron-context-menu": "^3.6.1",

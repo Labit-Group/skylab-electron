@@ -71,9 +71,22 @@ typings/
 # dotenv environment variables file
 .env
 .env.test
+.env.local
+.env.*.local
+
+# Apple Developer credentials (NEVER commit these!)
+*.p12
+*.cer
+*.mobileprovision
+AuthKey_*.p8
+certificate*.txt
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
+
+# Electron cache
+.cache/
+electron/
 
 # Next.js build output
 .next
@@ -105,3 +118,11 @@ dist
 
 ## Release Builds
 release-builds/
+dist/
+out/
+
+# Keep build configuration files but ignore actual builds
+!build/entitlements.mac.plist
+!build/*.icns
+!build/*.ico
+!build/*.png
