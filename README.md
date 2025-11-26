@@ -19,11 +19,23 @@ Aplicación de escritorio multiplataforma para SkyLab by Labit Group.
 
 ## 🏗️ Arquitecturas Soportadas
 
-| Plataforma | Arquitecturas | Status |
-|------------|---------------|--------|
-| **macOS** | x64, arm64, universal | ✅ Nativo |
-| **Windows** | x64 | ✅ |
-| **Linux** | x64, AppImage | ✅ |
+| Plataforma | Arquitecturas | Status | Distribución |
+|------------|---------------|--------|--------------|
+| **Windows** | x64, ia32, arm64 | ✅ | NSIS Installer + Portable |
+| **macOS** | arm64 (Apple Silicon) | ✅ | DMG + ZIP |
+| **Linux** | x64 | ✅ | AppImage |
+
+### Windows
+- ✅ **x64** - PCs modernas (64-bit) - **Más común** ⭐
+- ✅ **ia32** - PCs antiguas (32-bit)
+- ✅ **arm64** - Windows on ARM (Surface Pro X)
+- ✅ **Portable** - Ejecutable sin instalación (solo x64)
+
+### macOS
+- ✅ **arm64** - Apple Silicon (M1/M2/M3) nativo
+
+### Linux
+- ✅ **x64** - AppImage universal
 
 ## 🚀 Inicio Rápido
 
@@ -54,37 +66,57 @@ npm start
 ### Compilar
 
 ```bash
-# Windows
+# Windows - Todas las arquitecturas (Recomendado)
 npm run dist:win
 
-# macOS (arquitectura del sistema)
+# Windows - Solo x64 (más rápido)
+npm run dist:win:x64
+
+# Windows - Solo ia32 (32-bit)
+npm run dist:win:ia32
+
+# Windows - Solo arm64 (Windows on ARM)
+npm run dist:win:arm64
+
+# macOS - Apple Silicon
 npm run dist:mac
 
-# macOS Intel específico
-npm run build:mac:x64
-
-# macOS Apple Silicon específico
+# macOS - Apple Silicon específico
 npm run build:mac:arm64
-
-# macOS Universal (Intel + Apple Silicon) ⭐
-npm run build:mac:universal
 
 # Linux
 npm run dist:linux
 ```
 
+**Output de Windows:**
+```
+release-builds/
+├── SkyLab-Setup-0.1.1-x64.exe      ← NSIS Installer 64-bit
+├── SkyLab-Setup-0.1.1-ia32.exe     ← NSIS Installer 32-bit
+├── SkyLab-Setup-0.1.1-arm64.exe    ← NSIS Installer ARM64
+└── SkyLab-0.1.1-x64.exe            ← Portable (sin instalación)
+```
+
 Los builds generados estarán en `release-builds/`
 
-## 🍎 Builds para Apple Silicon
+## 🍎 Builds Multiplataforma
 
-Este proyecto está completamente configurado para generar builds nativos de macOS optimizados para Apple Silicon.
+Este proyecto está completamente configurado para generar builds nativos optimizados para todas las plataformas.
 
-### 📚 Documentación Completa
+### 📚 Documentación por Plataforma
 
+#### Windows 🪟
+- **[WINDOWS_QUICKSTART.md](WINDOWS_QUICKSTART.md)** - Inicio rápido Windows ⚡
+- **[WINDOWS_INSTALLER.md](WINDOWS_INSTALLER.md)** - Guía completa del instalador NSIS
+
+#### macOS 🍎
 - **[QUICKSTART.md](QUICKSTART.md)** - Comandos para empezar ahora mismo ⚡
 - **[README_APPLE_SILICON.md](README_APPLE_SILICON.md)** - Resumen ejecutivo
 - **[VISUAL_SUMMARY.md](VISUAL_SUMMARY.md)** - Resumen visual con diagramas
+
+#### General 📚
 - **[docs/](docs/)** - Documentación detallada completa
+- **[.github/WORKFLOW_GUIDE.md](.github/WORKFLOW_GUIDE.md)** - Guía de GitHub Actions
 
 ### ⚡ Comandos Rápidos
 

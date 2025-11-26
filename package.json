@@ -1,6 +1,6 @@
 {
   "name": "skylab",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Skylab by Francisco Ortega Iglesias",
   "main": "main.js",
   "author": "Francisco Ortega Iglesias",
@@ -9,6 +9,9 @@
     "start": "electron .",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
+    "dist:win:x64": "electron-builder --win --x64",
+    "dist:win:ia32": "electron-builder --win --ia32",
+    "dist:win:arm64": "electron-builder --win --arm64",
     "dist:mac": "electron-builder --mac --arm64",
     "dist:linux": "electron-builder --linux",
     "build:mac:arm64": "electron-builder --mac --arm64",
@@ -27,8 +30,18 @@
     "win": {
       "icon": "assets/icons/win/icon.ico",
       "target": [
-        "nsis"
-      ]
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32", "arm64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "publisherName": "Labit",
+      "verifyUpdateCodeSignature": false,
+      "requestedExecutionLevel": "asInvoker"
     },
     "mac": {
       "icon": "assets/icons/mac/icon.icns",
@@ -52,8 +65,19 @@
     },
     "nsis": {
       "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true
+      "perMachine": true,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icons/win/icon.ico",
+      "uninstallerIcon": "assets/icons/win/icon.ico",
+      "installerHeaderIcon": "assets/icons/win/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SkyLab",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "menuCategory": true,
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
     }
   },
   "devDependencies": {

@@ -1,0 +1,89 @@
+name: Build Windows
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**.js'
+      - '**.json'
+      - '**.css'
+      - '**.html'
+      - 'assets/**'
+      - '!**/*.md'
+      - '!docs/**'
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '**.js'
+      - '**.json'
+      - '**.css'
+      - '**.html'
+      - 'assets/**'
+      - '!**/*.md'
+      - '!docs/**'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    strategy:
+      matrix:
+        arch: [x64, ia32, arm64]
+      fail-fast: false
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build Windows ${{ matrix.arch }}
+        run: npm run dist:win:${{ matrix.arch }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEBUG: electron-builder
+      
+      - name: List build output
+        run: |
+          echo "=== Build Output ==="
+          dir release-builds
+        shell: cmd
+      
+      - name: Upload NSIS Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: skylab-windows-${{ matrix.arch }}-installer
+          path: |
+            release-builds/*-Setup-*-${{ matrix.arch }}.exe
+          retention-days: 30
+          if-no-files-found: warn
+      
+      - name: Upload Portable (x64 only)
+        if: matrix.arch == 'x64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: skylab-windows-portable
+          path: |
+            release-builds/*-${{ matrix.arch }}.exe
+            !release-builds/*-Setup-*.exe
+          retention-days: 30
+          if-no-files-found: warn
+      
+      - name: Build summary
+        run: |
+          echo "### ✅ Build Completado - Windows ${{ matrix.arch }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Arquitectura:** ${{ matrix.arch }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Runner:** windows-latest" >> $GITHUB_STEP_SUMMARY
+          echo "**Node.js:** 20" >> $GITHUB_STEP_SUMMARY
+        shell: bash
