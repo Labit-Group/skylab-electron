@@ -46,7 +46,6 @@
           ]
         }
       ],
-      "publisherName": "Labit",
       "verifyUpdateCodeSignature": false,
       "requestedExecutionLevel": "asInvoker"
     },
@@ -98,8 +97,7 @@
   },
   "devDependencies": {
     "electron": "^35.7.5",
-    "electron-builder": "^26.8.1",
-    "@electron/rebuild": "^3.7.1"
+    "electron-builder": "^26.8.1"
   },
   "dependencies": {
     "electron-context-menu": "^3.6.1",
