@@ -40,6 +40,8 @@ let zoomLevel = store.get('window.zoom') || 0;
 let currentDownloadAction = '';
 let currentDownloadID = '';
 let cancelDownloadMethod = 'cancelInModalWindow';
+let isQuitting = false;
+let items = { arr: [] };
 
 const MENU = [
   {
@@ -49,7 +51,7 @@ const MENU = [
       { role: 'forcereload' },
       { role: 'togglefullscreen' },
       { role: 'toggledevtools' },
-      { 
+      {
         label: 'Exit',
         accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Alt+F4',
         click: () => { app.exit(); }
@@ -57,14 +59,14 @@ const MENU = [
     ]
   }, {
     label: 'Edit',
-      submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
-        { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' }
-      ]
+    submenu: [
+      { role: 'undo' },
+      { role: 'redo' },
+      { type: 'separator' },
+      { role: 'cut' },
+      { role: 'copy' },
+      { role: 'paste' }
+    ]
   }, {
     label: 'Skylab Window',
     submenu: [
@@ -85,17 +87,18 @@ const MENU = [
   }, {
     label: 'IFrames',
     submenu: [
-      { 
+      {
         role: 'resetzoom',
         label: 'Zoom Reset'
-      }, { 
+      }, {
         role: 'zoomin',
         label: 'Zoom In'
-      }, { 
+      }, {
         role: 'zoomout',
         label: 'Zoom Out'
-      }, { 
-        type: 'separator' },
+      }, {
+        type: 'separator'
+      },
       {
         label: 'Toggle Navigation Menu',
         accelerator: 'Shift+4',
@@ -122,8 +125,8 @@ contextMenu({/*
       },
     },
   ], */
-  
-  
+
+
   showSaveImageAs: true,
   showInspectElement: false,
   showCopyLink: true
@@ -150,21 +153,21 @@ const saveMainWindowProperties = () => {
 };
 
 const createWindow = () => {
-  const size = store.get('window.size') || {width: 1000, height: 800};
-  const position = store.get('window.position') || {x: 500, y: 200};
+  const size = store.get('window.size') || { width: 1000, height: 800 };
+  const position = store.get('window.position') || { x: 500, y: 200 };
   const options = {
     width: size.width < 50 ? 800 : size.width,
     height: size.height < 50 ? 800 : size.height,
     x: position.x,
     y: position.y,
-    
+
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       webviewTag: true,
       nodeIntegration: true,
       contextIsolation: true
-     // default: true -- Para ejecutar apis de electron y preload en otro contexto (mal)
+      // default: true -- Para ejecutar apis de electron y preload en otro contexto (mal)
       /* lo mas seguro
       webSecurity: false, // default: true
       preload: path.join(__dirname, './preload.js'),
@@ -185,15 +188,81 @@ const createWindow = () => {
     resizeDownloadWindow();
     saveMainWindowProperties();
   });
-  
+
   mainWindow.on('moved', () => {
     resizeDownloadWindow();
     saveMainWindowProperties();
   });
-  
-  mainWindow.on('close', () => {
-    saveMainWindowProperties();
-    store.set('window.zoom', zoomLevel);
+
+  mainWindow.on('close', (event) => {
+    // Guardar propiedades de forma segura
+    try {
+      saveMainWindowProperties();
+      store.set('window.zoom', zoomLevel);
+    } catch (err) {
+      console.error('Error guardando propiedades de ventana:', err);
+    }
+
+    // Si no estamos ya en proceso de cierre, forzar limpieza
+    if (!isQuitting) {
+      isQuitting = true;
+
+      // Cancelar todas las descargas activas
+      try {
+        if (items && items.arr) {
+          items.arr.forEach((item) => {
+            try {
+              if (item && !item.isDestroyed && item.getState && item.getState() === 'progressing') {
+                item.cancel();
+              }
+            } catch (e) {
+              // Ignorar errores en items ya destruidos
+            }
+          });
+          items = { arr: [] };
+        }
+      } catch (err) {
+        console.error('Error cancelando descargas:', err);
+      }
+
+      // Destruir la ventana de descargas
+      try {
+        if (downloadWindow && !downloadWindow.isDestroyed()) {
+          downloadWindow.removeAllListeners();
+          downloadWindow.destroy();
+          downloadWindow = null;
+        }
+      } catch (err) {
+        console.error('Error destruyendo downloadWindow:', err);
+      }
+
+      // Cerrar todas las ventanas hijas que puedan quedar abiertas
+      try {
+        const allWindows = BrowserWindow.getAllWindows();
+        allWindows.forEach((win) => {
+          if (win !== mainWindow && !win.isDestroyed()) {
+            win.removeAllListeners();
+            win.destroy();
+          }
+        });
+      } catch (err) {
+        console.error('Error cerrando ventanas hijas:', err);
+      }
+    }
+  });
+
+  // Forzar cierre si la ventana queda en estado "zombie"
+  mainWindow.on('unresponsive', () => {
+    console.warn('⚠️ mainWindow no responde, forzando cierre...');
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.destroy();
+    }
+  });
+
+  // Limpiar referencia cuando la ventana se destruye
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+    downloadWindow = null;
   });
 };
 
@@ -215,10 +284,14 @@ const zoomReset = () => {
 };
 
 const resizeDownloadWindow = () => {
-  if (downloadWindow !== null && downloadWindow !== undefined) {
-    downloadWindow.setSize(downloadWindowProperties.width, downloadWindowProperties.height + 20);
-    downloadWindow.setMaximumSize(downloadWindowProperties.width, downloadWindowProperties.height + 20);
-    downloadWindow.setPosition(downloadWindowProperties.x - 4, downloadWindowProperties.y - 4);
+  if (downloadWindow !== null && downloadWindow !== undefined && !downloadWindow.isDestroyed()) {
+    try {
+      downloadWindow.setSize(downloadWindowProperties.width, downloadWindowProperties.height + 20);
+      downloadWindow.setMaximumSize(downloadWindowProperties.width, downloadWindowProperties.height + 20);
+      downloadWindow.setPosition(downloadWindowProperties.x - 4, downloadWindowProperties.y - 4);
+    } catch (err) {
+      console.warn('⚠️ Error redimensionando downloadWindow:', err.message);
+    }
   }
 };
 
@@ -269,7 +342,9 @@ ipcMain.on('removeFile', (event, arg) => {
     currentDownloadAction = 'cancel';
     currentDownloadID = arg.id;
     cancelDownloadMethod = 'buttonPressed';
-    mainWindow.webContents.downloadURL(arg.url);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.downloadURL(arg.url);
+    }
   }
 
   if (arg.closeDownloadWindow) {
@@ -278,8 +353,8 @@ ipcMain.on('removeFile', (event, arg) => {
 });
 
 ipcMain.on('resizeWindow', (event, arg) => {
-  if (!downloadWindow) {
-    console.warn("⚠️ resizeWindow ignorado: downloadWindow aún no existe");
+  if (!downloadWindow || downloadWindow.isDestroyed()) {
+    console.warn("⚠️ resizeWindow ignorado: downloadWindow no disponible");
     return;
   }
 
@@ -309,14 +384,50 @@ app.on('browser-window-created', (e, bw) => {
   const wc = bw.webContents;
   wc.setWindowOpenHandler((details) => {
     const url = details.url;
-    if (!url.startsWith('https://skylab.labit.es') && !url.startsWith('http://localhost') && !url.startsWith('https://login.microsoftonline.com')) {
-      wc.loadURL(url);
-      return { action: 'deny' };
+
+    // URLs que deben abrirse en una ventana nueva de Electron (flujos OAuth, etc.)
+    const allowInNewWindow = [
+      'https://skylab.labit.es',
+      'http://localhost',
+      'https://login.microsoftonline.com',
+      // OAuth de Autodesk: tu API backend que redirige a Autodesk
+      'http://localhost:3000',
+      'http://localhost:5000',
+      'https://cloudadmin.labit.es',
+      'https://developer.api.autodesk.com',
+      'https://accounts.autodesk.com',
+    ];
+
+    // URLs que deben abrirse en el navegador externo del sistema
+    // (útil como fallback para dominios desconocidos)
+    const openExternally = [
+      'https://accounts.autodesk.com',
+    ];
+
+    const shouldAllowNewWindow = allowInNewWindow.some(prefix => url.startsWith(prefix));
+
+    if (shouldAllowNewWindow) {
+      // Abrir en una nueva ventana de Electron (hija de mainWindow)
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          parent: mainWindow,
+          modal: false,
+          width: 600,
+          height: 720,
+          autoHideMenuBar: true,
+          webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+          }
+        }
+      };
     }
-    const b = new BrowserWindow({ parent: mainWindow });
-    b.show();
-    b.loadURL(url);
-    return { action: 'allow' };
+
+    // Para cualquier otra URL: abrir en el navegador externo del sistema
+    // y NO cargar en la ventana actual (evita sobrescribir la app)
+    shell.openExternal(url);
+    return { action: 'deny' };
   });
 });
 
@@ -340,8 +451,13 @@ app.on('browser-window-created', (e, bw) => {
 });
 */
 
+app.on('before-quit', () => {
+  isQuitting = true;
+});
+
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  // En todas las plataformas, salir cuando se cierran todas las ventanas
+  app.quit();
 });
 
 /* START */
@@ -351,7 +467,7 @@ app.on('window-all-closed', () => {
   Menu.setApplicationMenu(menu);
 
   app.commandLine.appendSwitch('disable-http-cache');
-	await app.whenReady();
+  await app.whenReady();
 
   // === UA REAL + " SkyLab" a nivel de sesión (para ventana y webviews) ===
   // 1) Toma el UA real del runtime de Electron (incluye Chrome/XX real).
@@ -361,17 +477,13 @@ app.on('window-all-closed', () => {
   // 3) Fija el UA global de la sesión y el fallback del proceso.
   session.defaultSession.setUserAgent(brandedUA);
   app.userAgentFallback = brandedUA;
-	
+
   createWindow();
   createDownloadWindow();
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow(); 
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 
-  // Esto es para poder cancelar los items
-  let items = {
-    'arr': []
-  };
   mainWindow.webContents.session.on('will-download', async (event, item, webContents) => {
     let bw = BrowserWindow.fromWebContents(webContents);
     const url = webContents.getURL();
@@ -382,7 +494,7 @@ app.on('window-all-closed', () => {
     // El orden TIENE que quedarse asi, si no no funciona
     const downloadedFrom = item.getURL();
     let fileName = item.getFilename();
-    const ext = path.extname(fileName).replace(/\./g, '').toUpperCase(); 
+    const ext = path.extname(fileName).replace(/\./g, '').toUpperCase();
     const bytes = item.getTotalBytes();
     let id;
 
@@ -394,9 +506,9 @@ app.on('window-all-closed', () => {
     } else {
       cancelDownloadMethod = 'cancelInModalWindow';
       downloadWindow.show();
-      
+
       id = Math.floor(Math.random() * 10000000);
-      downloadWindow.webContents.send('newFile', { 
+      downloadWindow.webContents.send('newFile', {
         id: id,
         fileName: fileName,
         extension: ext,
@@ -431,7 +543,7 @@ app.on('window-all-closed', () => {
     item.once('done', (event, state) => {
       if (state === 'completed') {
         const downloadPath = item.getSavePath();
-        downloadWindow.webContents.send('fileDownloaded', { id: id, fullPath: downloadPath});
+        downloadWindow.webContents.send('fileDownloaded', { id: id, fullPath: downloadPath });
         console.log('completed');
       } else { // se hace esto para disparar la accion que cierra la ventana de descarga
         if (cancelDownloadMethod === 'cancelInModalWindow') {

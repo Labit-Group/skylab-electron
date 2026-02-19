@@ -38,7 +38,7 @@ jobs:
       - name: Intentar build arm64 (simple)
         run: |
           echo "🔨 Iniciando build para arm64..."
-          npm run build:mac:arm64
+          npm run dist:mac:arm64
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -12,9 +12,10 @@
     "dist:win:x64": "electron-builder --win --x64",
     "dist:win:ia32": "electron-builder --win --ia32",
     "dist:win:arm64": "electron-builder --win --arm64",
-    "dist:mac": "electron-builder --mac --arm64",
+    "dist:mac": "electron-builder --mac",
+    "dist:mac:arm64": "electron-builder --mac --arm64",
+    "dist:mac:x64": "electron-builder --mac --x64",
     "dist:linux": "electron-builder --linux",
-    "build:mac:arm64": "electron-builder --mac --arm64",
     "postinstall": "electron-builder install-app-deps"
   },
   "build": {
@@ -32,11 +33,17 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64", "ia32", "arm64"]
+          "arch": [
+            "x64",
+            "ia32",
+            "arm64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "publisherName": "Labit",
@@ -48,20 +55,29 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["arm64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         }
       ],
-      "category": "public.app-category.developer-tools"
+      "category": "public.app-category.developer-tools",
+      "identity": null,
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "linux": {
-      "icon": "assets/icons/png/icon.svg",
+      "icon": "assets/icons/png",
       "target": [
         "AppImage"
-      ]
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -82,8 +98,8 @@
   },
   "devDependencies": {
     "electron": "^35.7.5",
-    "electron-builder": "^24.13.1",
-    "electron-rebuild": "^3.2.9"
+    "electron-builder": "^26.8.1",
+    "@electron/rebuild": "^3.7.1"
   },
   "dependencies": {
     "electron-context-menu": "^3.6.1",
