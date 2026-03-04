@@ -3,6 +3,18 @@
 ; SkyLab - Labit Group
 ; ========================================
 
+; Forzar directorio de instalación por defecto al del sistema destino
+!macro customHeader
+  !define INSTALL_DIRECTORY "$PROGRAMFILES64\SkyLab"
+!macroend
+
+!macro customInit
+  ; Forzar que $INSTDIR use $PROGRAMFILES64 del sistema destino, NO del compilador
+  StrCmp $INSTDIR "" 0 DirSet
+    StrCpy $INSTDIR "$PROGRAMFILES64\SkyLab"
+  DirSet:
+!macroend
+
 ; Macros de instalación personalizada
 !macro customInstall
   ; Crear accesos directos adicionales

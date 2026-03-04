@@ -21,6 +21,7 @@ on:
       - '**.css'
       - '**.html'
       - 'assets/**'
+      - 'build/**'
       - '!**/*.md'
       - '!docs/**'
   workflow_dispatch:
