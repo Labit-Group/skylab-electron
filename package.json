@@ -34,9 +34,7 @@
         {
           "target": "nsis",
           "arch": [
-            "x64",
-            "ia32",
-            "arm64"
+            "x64"
           ]
         },
         {
@@ -94,7 +92,9 @@
       "menuCategory": true,
       "artifactName": "${productName}-Setup-${version}-${arch}.${ext}",
       "include": "build/installer.nsh",
-      "installerLanguages": ["es_ES"],
+      "installerLanguages": [
+        "es_ES"
+      ],
       "language": "3082"
     }
   },

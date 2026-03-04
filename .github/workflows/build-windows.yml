@@ -9,6 +9,7 @@ on:
       - '**.css'
       - '**.html'
       - 'assets/**'
+      - 'build/**'
       - '!**/*.md'
       - '!docs/**'
     tags:
@@ -74,9 +75,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: skylab-windows-portable
-          path: |
-            release-builds/*-${{ matrix.arch }}.exe
-            !release-builds/*-Setup-*.exe
+          path: release-builds/*Portable*.exe
           retention-days: 30
           if-no-files-found: warn
       
