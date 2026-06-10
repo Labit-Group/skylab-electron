@@ -26,6 +26,8 @@ const icon = {
   "win": path.join("assets", "icons", "win", "icon.ico")
 }
 
+const version = app.getVersion();
+
 const store = new Store();
 
 let downloadWindowProperties = {
@@ -103,6 +105,19 @@ const MENU = [
         label: 'Toggle Navigation Menu',
         accelerator: 'Shift+4',
       },
+    ]
+  }, {
+    label: 'About',
+    submenu: [
+     {label: 'Version: ' + version, enabled: false},
+     {label: 'Skylab by Labit', enabled: false},
+     {type: 'separator'},
+     {
+       label: 'GitHub Repository',
+       click: async () => {
+         await shell.openExternal('https://github.com/Labit-Group/SkylabV1.git');
+       }
+     }
     ]
   }
 ];
