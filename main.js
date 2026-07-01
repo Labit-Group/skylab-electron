@@ -181,7 +181,9 @@ const createWindow = () => {
       preload: path.join(__dirname, 'preload.js'),
       webviewTag: true,
       nodeIntegration: true,
-      contextIsolation: true
+      contextIsolation: true,
+      sandbox: false,
+      spellcheck: true,
       // default: true -- Para ejecutar apis de electron y preload en otro contexto (mal)
       /* lo mas seguro
       webSecurity: false, // default: true
