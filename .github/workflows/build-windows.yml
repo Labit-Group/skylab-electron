@@ -38,16 +38,16 @@ jobs:
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: 'npm'
       
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       
       - name: Build Windows ${{ matrix.arch }}
         run: npm run dist:win:${{ matrix.arch }}
@@ -62,7 +62,7 @@ jobs:
         shell: cmd
       
       - name: Upload NSIS Installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: skylab-windows-${{ matrix.arch }}-installer
           path: |
@@ -72,7 +72,7 @@ jobs:
       
       - name: Upload Portable (x64 only)
         if: matrix.arch == 'x64'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: skylab-windows-portable
           path: release-builds/*Portable*.exe
@@ -85,5 +85,5 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Arquitectura:** ${{ matrix.arch }}" >> $GITHUB_STEP_SUMMARY
           echo "**Runner:** windows-latest" >> $GITHUB_STEP_SUMMARY
-          echo "**Node.js:** 20" >> $GITHUB_STEP_SUMMARY
+          echo "**Node.js:** $(node -v)" >> $GITHUB_STEP_SUMMARY
         shell: bash

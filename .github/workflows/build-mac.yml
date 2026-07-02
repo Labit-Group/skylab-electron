@@ -30,17 +30,17 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: 'npm'
           cache-dependency-path: package.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build macOS (arm64 + x64)
         env:
@@ -54,7 +54,7 @@ jobs:
           ls -lh release-builds/
           
       - name: Upload arm64 build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: skylab-macos-arm64
           path: |
@@ -63,7 +63,7 @@ jobs:
           retention-days: 30
 
       - name: Upload x64 build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: skylab-macos-x64
           path: |
