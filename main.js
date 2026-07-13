@@ -436,6 +436,9 @@ app.on('browser-window-created', (e, bw) => {
           webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
+            sandbox: false,
+            webviewTag: true,
+            preload: path.join(__dirname, 'preload.js')
           }
         }
       };
