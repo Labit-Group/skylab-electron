@@ -107,17 +107,38 @@ const MENU = [
       },
     ]
   }, {
+    label: 'Window',
+    submenu: [
+      {
+        role: 'minimize',
+        label: 'Minimize'
+      }, {
+        role: 'maximize',
+        label: 'Maximize',
+        click: async () => {
+          if (mainWindow.isMaximized()) {
+            mainWindow.unmaximize();
+          } else {
+            mainWindow.maximize();
+          }
+        }
+      }, {
+        role: 'togglefullscreen ',
+        label: 'Full Screen',
+      }
+    ]
+  }, {
     label: 'About',
     submenu: [
-     {label: 'Version: ' + version, enabled: false},
-     {label: 'Skylab by Labit', enabled: false},
-     {type: 'separator'},
-     {
-       label: 'GitHub Repository',
-       click: async () => {
-         await shell.openExternal('https://github.com/Labit-Group/SkylabV1.git');
-       }
-     }
+      { label: 'Version: ' + version, enabled: false },
+      { label: 'Skylab by Labit', enabled: false },
+      { type: 'separator' },
+      {
+        label: 'GitHub Repository',
+        click: async () => {
+          await shell.openExternal('https://github.com/Labit-Group/SkylabV1.git');
+        }
+      }
     ]
   }
 ];
@@ -177,6 +198,7 @@ const createWindow = () => {
     y: position.y,
 
     show: false,
+    autoHideMenuBar: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       webviewTag: true,
@@ -197,7 +219,6 @@ const createWindow = () => {
     icon: path.join(__dirname, icon[OS])
   }
   mainWindow = new BrowserWindow(options);
-
   mainWindow.show();
   mainWindow.loadURL(URL);
 
