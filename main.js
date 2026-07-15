@@ -123,7 +123,7 @@ const MENU = [
           }
         }
       }, {
-        role: 'togglefullscreen ',
+        role: 'togglefullscreen',
         label: 'Full Screen',
       }
     ]
